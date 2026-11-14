@@ -351,7 +351,7 @@ final class LXJavaScriptRuntime {
                             keyBytes.baseAddress, key.count, ecb ? nil : ivBytes.baseAddress,
                             inputBytes.baseAddress, input.count, &output, outputCapacity, &moved)
                 } ?? CCCrypt(CCOperation(kCCEncrypt), CCAlgorithm(kCCAlgorithmAES),
-                             CCOptions(kCCOptionPKCS7Padding | kCCOptionECBMode),
+                             CCOptions(0),
                              keyBytes.baseAddress, key.count, nil, inputBytes.baseAddress,
                              input.count, &output, outputCapacity, &moved)
             }

@@ -129,7 +129,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
   // Platform IDs are declared by the source script. Keep the namespace constrained,
   // while allowing community extensions such as qs and future LX-compatible providers.
   const supportedPlatformPattern = /^[a-z][a-z0-9_-]{0,31}$/
-  const supportedQualities = new Set(['128k', '320k', 'flac', 'flac24bit'])
+  const supportedQualityPattern = /^[a-zA-Z0-9_-]{1,32}$/
   const supportedActions = new Set(['musicUrl', 'lyric', 'pic'])
   const localPlatform = 'local'
 
@@ -262,7 +262,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
         sourceInfo.sources[source] = {
           type: 'music',
           actions: declaredActions.filter(action => supportedActions.has(action)),
-          qualitys: source === localPlatform ? [] : declaredQualitys.filter(quality => supportedQualities.has(quality)),
+          qualitys: source === localPlatform ? [] : declaredQualitys.filter(quality => typeof quality === 'string' && supportedQualityPattern.test(quality)),
         }
         if (sourceInfo.sources[source].actions.length === 0) delete sourceInfo.sources[source]
       }

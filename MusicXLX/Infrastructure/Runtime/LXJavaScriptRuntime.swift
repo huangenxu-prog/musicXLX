@@ -120,7 +120,7 @@ final class LXJavaScriptRuntime {
                 return
             }
             guard ["musicUrl", "lyric", "pic"].contains(action) else {
-                completion(.failure(RuntimeError.javascript("不支持的音源动作：\\(action)")))
+                completion(.failure(RuntimeError.javascript("不支持的音源动作：\(action)")))
                 return
             }
             let requestKey = UUID().uuidString

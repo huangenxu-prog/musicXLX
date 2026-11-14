@@ -17,6 +17,32 @@ This inventory records the existing LX Music catalog modules to be reused. It is
 
 The app-level registration in `src/utils/musicSdk/index.js` includes `kw`, `kg`, `tx`, `wy`, and `mg`. The Baidu provider is commented out in the registry and is not part of the initial extraction. `xm` is an additional source module, not one of the five catalog providers above.
 
+## Exact provider method inventory verified in source
+
+The following names are the actual method names found in the LX 1.9.2 files (not proposed MusicXLX API names):
+
+| Provider | Search method | Chart methods | Playlist methods | Album methods |
+|---|---|---|---|---|
+| `wy` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | no dedicated album provider file/method confirmed |
+| `tx` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | no dedicated album provider file/method confirmed |
+| `kw` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | `album.getAlbumListDetail` |
+| `kg` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListInfo`, `getSongListRecommend`, `search` | `album.getAlbumInfo`, `album.getAlbumDetail` |
+| `mg` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | `album.getAlbumInfo`, `album.getAlbumDetail` |
+
+Important source detail: NetEase's `getListDetail` may call `musicDetailApi.getList` when the playlist's track metadata is incomplete. That dependency must be included in the extracted module graph.
+
+## Required runtime compatibility layer
+
+The catalog dependency graph uses these facilities from the original app:
+
+- `src/utils/request.js`: `httpFetch` returns `{ promise, cancelHttp }`; resolved response shape includes `body`, `statusCode`, `url`, and headers. JSON parsing is attempted but non-JSON text is preserved. POST `form` is URL-encoded. Some endpoints require raw/binary response handling.
+- `src/utils/musicSdk/api-source.js`: playback API lookup is driven by the app setting `common.apiSource` and `global.lx.apis`. This is relevant to playback resolution, not the catalog search/list/chart modules listed above.
+- `src/utils/musicSdk/utils.js` and `src/index.js`: shared singer formatting, string decoding, play-time/date/count/size formatting.
+- Provider-local crypto/signature modules: notably NetEase `weapi/linuxapi/eapi`, QQ request signing, Kugou signature/compression helpers, Kuwo crypto helpers, and Migu signature helpers.
+- Provider modules sometimes import `pako`, Buffer, native crypto functions, and app settings. These must be supplied or replaced by a narrow compatibility adapter; they cannot be assumed to exist in JavaScriptCore.
+
+The catalog bridge must preserve the original `httpFetch` response contract and cancellation behavior. A generic `fetch(url)` wrapper returning only decoded JSON would not be compatible.
+
 ## Explicit exclusions for the first pass
 
 - Curated/精选 home feed.

@@ -34,6 +34,7 @@
       if (bits >= 8) {
         bits -= 8;
         out.push((accumulator >> bits) & 255);
+        accumulator &= (1 << bits) - 1;
       }
     }
     return new Uint8Array(out);
@@ -117,11 +118,16 @@
       }
     }
     slice(start, end) { return new LXBuffer(this.subarray(start, end)); }
-    subarray(start, end) { return new LXBufferView(super.subarray(start, end)); }
+    subarray(start, end) {
+      var view = super.subarray(start, end);
+      return new LXBufferView(view.buffer, view.byteOffset, view.byteLength);
+    }
   }
 
-  // A view keeps the Buffer methods while sharing the original byte storage.
+  // A view keeps Buffer methods and shares the original byte storage, matching
+  // Node Buffer.subarray() semantics used by LX's crypto helpers.
   class LXBufferView extends Uint8Array {
+    constructor(buffer, byteOffset, length) { super(buffer, byteOffset, length); }
     get _isBuffer() { return true; }
     toString(encoding, start, end) { return LXBuffer.from(this).toString(encoding, start, end); }
     slice(start, end) { return new LXBuffer(this.subarray(start, end)); }

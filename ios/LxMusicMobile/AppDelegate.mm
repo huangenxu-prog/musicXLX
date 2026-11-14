@@ -11,6 +11,10 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <CommonCrypto/CommonCryptor.h>
 #import <Security/Security.h>
+#import <UserNotifications/UserNotifications.h>
+#import <ifaddrs.h>
+#import <arpa/inet.h>
+#import <net/if.h>
 
 static NSData *LXBase64Data(NSString *value) {
   return [[NSData alloc] initWithBase64EncodedString:value ?: @"" options:NSDataBase64DecodingIgnoreUnknownCharacters] ?: [NSData data];
@@ -484,6 +488,76 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(aesDecryptSync:(NSString *)text key:(NSSt
 
 RCT_EXPORT_METHOD(sha1:(NSString *)input resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
   resolve(LXSHA1(input));
+}
+
+@end
+
+
+@interface LXDeviceInfoModule : NSObject <RCTBridgeModule>
+@end
+
+@implementation LXDeviceInfoModule
+
+RCT_EXPORT_MODULE(LXDeviceInfoModule)
+
+RCT_REMAP_METHOD(getDeviceName,
+                 getDeviceNameWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+  resolve([UIDevice currentDevice].name ?: @"iOS Device");
+}
+
+RCT_REMAP_METHOD(getWIFIIPV4Address,
+                 getWIFIIPV4AddressWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+  NSString *address = @"";
+  struct ifaddrs *interfaces = NULL;
+  if (getifaddrs(&interfaces) == 0) {
+    for (struct ifaddrs *interface = interfaces; interface != NULL; interface = interface->ifa_next) {
+      if (interface->ifa_addr == NULL || interface->ifa_addr->sa_family != AF_INET) continue;
+      if (strcmp(interface->ifa_name, "en0") != 0) continue;
+      char buffer[INET_ADDRSTRLEN] = {0};
+      struct sockaddr_in *ipv4 = (struct sockaddr_in *)interface->ifa_addr;
+      if (inet_ntop(AF_INET, &ipv4->sin_addr, buffer, sizeof(buffer)) != NULL) {
+        address = [NSString stringWithUTF8String:buffer] ?: @"";
+        break;
+      }
+    }
+    freeifaddrs(interfaces);
+  }
+  resolve(address);
+}
+
+@end
+
+@interface LXNotificationModule : NSObject <RCTBridgeModule>
+@end
+
+@implementation LXNotificationModule
+
+RCT_EXPORT_MODULE(LXNotificationModule)
+
+RCT_REMAP_METHOD(isNotificationsEnabled,
+                 isNotificationsEnabledWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+  [[UNUserNotificationCenter currentNotificationCenter] getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings *settings) {
+    BOOL enabled = settings.authorizationStatus == UNAuthorizationStatusAuthorized ||
+      settings.authorizationStatus == UNAuthorizationStatusProvisional;
+    resolve(@(enabled));
+  }];
+}
+
+RCT_REMAP_METHOD(requestNotificationPermission,
+                 requestNotificationPermissionWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+  UNAuthorizationOptions options = UNAuthorizationOptionAlert | UNAuthorizationOptionBadge | UNAuthorizationOptionSound;
+  [[UNUserNotificationCenter currentNotificationCenter] requestAuthorizationWithOptions:options completionHandler:^(BOOL granted, NSError *error) {
+    if (error != nil) reject(@"E_NOTIFICATION_PERMISSION", error.localizedDescription, error);
+    else resolve(@(granted));
+  }];
 }
 
 @end

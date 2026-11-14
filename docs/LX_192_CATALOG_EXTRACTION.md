@@ -9,11 +9,11 @@ This inventory records the existing LX Music catalog modules to be reused. It is
 
 | Provider | Search | Charts | Playlist taxonomy/list/detail | Album detail |
 |---|---|---|---|---|
-| NetEase (`wy`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search` | no standalone album-detail provider method found in the provider entry point; verify before exposing |
-| QQ Music (`tx`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search`; `getRecommendList` is playlist-square data | no standalone album-detail provider method found |
-| Kuwo (`kw`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search` | `album.getAlbumListDetail` |
-| Kugou (`kg`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search`; `getSongListRecommend` | `album.getAlbumInfo/getAlbumDetail` |
-| Migu (`mg`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search` | `album.getAlbumDetail/getAlbumInfo` |
+| NetEase (`wy`) | `musicSearch.search` | `leaderboard.getBoardsData/getList` | `songList.getTags/getList/getListDetail/search` | no standalone album module; playlist detail may hydrate missing tracks through `musicDetail.getList` |
+| QQ Music (`tx`) | `musicSearch.search` | `leaderboard.getBoardsData/getList` | `songList.getTags/getList/getListDetail/search` | no album-detail module/method exposed by the provider |
+| Kuwo (`kw`) | `musicSearch.search` | `leaderboard.getBoardsData/getList` | `songList.getTags/getList/getListDetail/search` | `songList.getListDetail` delegates album IDs to `album.getAlbumListDetail` |
+| Kugou (`kg`) | `musicSearch.search` | `leaderboard.getBoardsData` | `songList.getTags/getList/getListInfo/getSongListRecommend/search` | separate `album.js` has `getAlbumInfo/getAlbumDetail`, not wired by default provider index |
+| Migu (`mg`) | `musicSearch.search` | `leaderboard.getBoardsData/getList` | `songList.getTags/getList/getListDetail/search` | separate `album.js` has `getAlbumInfo/getAlbumDetail`, not wired by default provider index |
 
 The app-level registration in `src/utils/musicSdk/index.js` includes `kw`, `kg`, `tx`, `wy`, and `mg`. The Baidu provider is commented out in the registry and is not part of the initial extraction. `xm` is an additional source module, not one of the five catalog providers above.
 
@@ -40,7 +40,8 @@ Notes:
 
 The catalog dependency graph uses these facilities from the original app:
 
-- `src/utils/request.js`: `httpFetch` returns `{ promise, cancelHttp }`; resolved response shape includes `body`, `statusCode`, `url`, and headers. JSON parsing is attempted but non-JSON text is preserved. POST `form` is URL-encoded. Some endpoints require raw/binary response handling.
+- `src/utils/request.js`: `httpFetch` returns `{ promise, cancelHttp }`; resolved response shape includes `body`, `statusCode`, `statusMessage`, `url`, `ok`, and headers. JSON parsing is attempted but non-JSON text is preserved. POST `form` is URL-encoded. Binary responses are converted from Blob to Buffer.
+- The request helper's special `bHh` header transformation is conditional: it runs only when a caller passes that obfuscated header key. The inspected five-provider catalog modules do not import `musicSdk/options.js`'s `headers` constant, so this transformation is not currently evidenced as a requirement for their catalog calls. Keep it out of the initial shim unless a selected source module is found to pass that key.
 - `src/utils/musicSdk/api-source.js`: playback API lookup is driven by the app setting `common.apiSource` and `global.lx.apis`. This is relevant to playback resolution, not the catalog search/list/chart modules listed above.
 - `src/utils/musicSdk/utils.js` and `src/index.js`: shared singer formatting, string decoding, play-time/date/count/size formatting.
 - Provider-local crypto/signature modules: notably NetEase `weapi/linuxapi/eapi`, QQ request signing, Kugou signature/compression helpers, Kuwo crypto helpers, and Migu signature helpers.
@@ -122,7 +123,7 @@ Added `MusicXLX/Infrastructure/Catalog/LXCatalogJavaScriptRuntime.swift`.
 
 Important current limitations:
 - The actual LX provider source modules are not bundled into the app yet.
-- This first shim does not yet implement the full original `request.js` preprocessing behavior (including its `bHh` request-header transformation, multipart formData, and binary Blob-to-Buffer conversion).
+- This first shim does not yet implement the full original `request.js` preprocessing behavior (notably multipart `formData` and binary Blob-to-Buffer conversion). The special `bHh` transformation is conditional and is not currently used by the inspected catalog modules.
 - Crypto/native modules, Buffer, pako, React Native timer APIs, and the shared LX utility aliases are not yet fully adapted.
 - Therefore the runtime foundation is not yet sufficient to claim any LX catalog provider is runnable. The next work is to close these compatibility gaps and produce a reproducible bundle from the supplied 1.9.2 source.
 

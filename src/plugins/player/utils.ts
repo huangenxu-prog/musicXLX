@@ -181,9 +181,21 @@ export const updateNowPlayingTitles = async(titles: NowPlayingTitles) => {
 
 export const resetPlay = async() => Promise.all([setPause(), setCurrentTime(0)])
 
-export const isCached = async(url: string) => TrackPlayer.isCached(url)
-export const getCacheSize = async() => TrackPlayer.getCacheSize()
-export const clearCache = async() => TrackPlayer.clearCache()
+// The pinned TrackPlayer iOS implementation uses AVPlayer and does not
+// expose the Android disk-cache methods. Guard these optional APIs so iOS
+// preloading and the cache settings screen do not call missing native methods.
+export const isCached = async(url: string): Promise<boolean> => {
+  if (typeof TrackPlayer.isCached !== 'function') return false
+  return TrackPlayer.isCached(url)
+}
+export const getCacheSize = async(): Promise<number> => {
+  if (typeof TrackPlayer.getCacheSize !== 'function') return 0
+  return TrackPlayer.getCacheSize()
+}
+export const clearCache = async(): Promise<void> => {
+  if (typeof TrackPlayer.clearCache !== 'function') return
+  await TrackPlayer.clearCache()
+}
 export const migratePlayerCache = async() => {
   const newCachePath = privateStorageDirectoryPath + '/TrackPlayer'
   if (await existsFile(newCachePath)) return

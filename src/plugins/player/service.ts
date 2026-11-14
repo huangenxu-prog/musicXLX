@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
+import { Platform } from 'react-native'
 import TrackPlayer, { State as TPState, Event as TPEvent } from 'react-native-track-player'
 // import { store } from '@/store'
 // import { action as playerAction, STATUS } from '@/store/modules/player'
@@ -73,6 +74,8 @@ const registerPlaybackService = async() => {
   })
 
   TrackPlayer.addEventListener(TPEvent.RemoteSeek, async({ position }) => {
+    // The pinned iOS native bridge emits RemoteSeek but does not seek AVPlayer itself.
+    if (Platform.OS === 'ios') await TrackPlayer.seekTo(position)
     global.app_event.setProgress(position as number)
   })
 

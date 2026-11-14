@@ -37,7 +37,12 @@ export const shareText = async(_shareTitle: string, title: string, text: string)
 }
 
 export const getSystemLocales = async(): Promise<string> => {
-  return Intl.DateTimeFormat().resolvedOptions().locale || 'en'
+  const locale = (Intl.DateTimeFormat().resolvedOptions().locale || 'en-US').toLowerCase()
+  if (locale.startsWith('zh')) {
+    const isTraditional = /(?:^|-)hant(?:-|$)/.test(locale) || /(?:^|-)(tw|hk|mo)(?:-|$)/.test(locale)
+    return isTraditional ? 'zh_tw' : 'zh_cn'
+  }
+  return 'en_us'
 }
 
 export const onScreenStateChange = (handler: (state: 'ON' | 'OFF') => void): (() => void) => {

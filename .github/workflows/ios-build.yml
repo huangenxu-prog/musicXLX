@@ -52,6 +52,11 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm ci
 
+      - name: Report production dependency vulnerabilities
+        run: |
+          npm audit --omit=dev --json > "$RUNNER_TEMP/npm-audit.json" || true
+          node -e 'const fs = require("fs"); const a = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/npm-audit.json", "utf8")); console.log(JSON.stringify({ metadata: a.metadata?.vulnerabilities, vulnerabilities: Object.entries(a.vulnerabilities ?? {}).map(([name, v]) => ({ name, severity: v.severity, isDirect: v.isDirect, range: v.range, fixAvailable: v.fixAvailable })) }, null, 2))'
+
       - name: ESLint check
         run: npm run lint
 

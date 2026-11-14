@@ -144,7 +144,7 @@ static NSString *LXRSANoPaddingEncrypt(NSString *data, NSString *publicKeyBase64
 
 @interface LXUserApiModule : RCTEventEmitter <RCTBridgeModule>
 @property(nonatomic, strong) JSContext *jsContext;
-@property(nonatomic, copy) NSString *runtimeKey;
+@property(atomic, copy) NSString *runtimeKey;
 @property(nonatomic, assign) BOOL didSendInit;
 @property(nonatomic, strong) NSMutableDictionary<NSNumber *, dispatch_source_t> *timeoutSources;
 @property(nonatomic, strong) NSMutableDictionary<NSNumber *, NSString *> *timeoutTokens;

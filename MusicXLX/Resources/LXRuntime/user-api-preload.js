@@ -365,6 +365,8 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
             statusCode: resp.statusCode,
             statusMessage: resp.statusMessage,
             headers: resp.headers,
+            bytes: resp.bytes,
+            raw: new Uint8Array(resp.raw || []),
             body: resp.body,
           }, resp.body)
         }

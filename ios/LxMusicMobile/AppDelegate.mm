@@ -5,6 +5,261 @@
 #import <React/RCTUtils.h>
 #import <UIKit/UIKit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <JavaScriptCore/JavaScriptCore.h>
+#import <CommonCrypto/CommonDigest.h>
+#import <CommonCrypto/CommonCryptor.h>
+#import <Security/Security.h>
+
+static NSData *LXBase64Data(NSString *value) {
+  return [[NSData alloc] initWithBase64EncodedString:value ?: @"" options:NSDataBase64DecodingIgnoreUnknownCharacters] ?: [NSData data];
+}
+
+static NSString *LXBase64String(NSData *data) {
+  return [data base64EncodedStringWithOptions:0] ?: @"";
+}
+
+static NSString *LXMD5(NSString *value) {
+  NSString *decoded = [value stringByRemovingPercentEncoding] ?: value;
+  NSData *input = [decoded dataUsingEncoding:NSUTF8StringEncoding];
+  unsigned char digest[CC_MD5_DIGEST_LENGTH];
+  CC_MD5(input.bytes, (CC_LONG)input.length, digest);
+  NSMutableString *result = [NSMutableString stringWithCapacity:CC_MD5_DIGEST_LENGTH * 2];
+  for (NSUInteger i = 0; i < CC_MD5_DIGEST_LENGTH; i++) [result appendFormat:@"%02x", digest[i]];
+  return result;
+}
+
+static NSString *LXAES(NSString *data, NSString *key, NSString *iv, NSString *mode) {
+  NSData *input = LXBase64Data(data);
+  NSData *keyData = LXBase64Data(key);
+  NSData *ivData = LXBase64Data(iv);
+  BOOL cbc = [mode containsString:@"CBC"];
+  CCOptions options = cbc ? kCCOptionPKCS7Padding : kCCOptionECBMode;
+  if (cbc) options |= kCCOptionPKCS7Padding;
+  unsigned char ivBytes[kCCBlockSizeAES128] = {0};
+  if (cbc && ivData.length > 0) memcpy(ivBytes, ivData.bytes, MIN(ivData.length, sizeof(ivBytes)));
+  size_t outputCapacity = input.length + kCCBlockSizeAES128;
+  NSMutableData *output = [NSMutableData dataWithLength:outputCapacity];
+  size_t outputLength = 0;
+  CCCryptorStatus status = CCCrypt(kCCEncrypt, kCCAlgorithmAES, options,
+    keyData.bytes, keyData.length, cbc ? ivBytes : NULL,
+    input.bytes, input.length, output.mutableBytes, outputCapacity, &outputLength);
+  if (status != kCCSuccess) return @"";
+  output.length = outputLength;
+  return LXBase64String(output);
+}
+
+static BOOL LXReadASN1Length(const uint8_t *bytes, NSUInteger total, NSUInteger *offset, NSUInteger *length) {
+  if (*offset >= total) return NO;
+  uint8_t first = bytes[(*offset)++];
+  if ((first & 0x80) == 0) { *length = first; return YES; }
+  NSUInteger count = first & 0x7f;
+  if (count == 0 || count > sizeof(NSUInteger) || *offset + count > total) return NO;
+  NSUInteger value = 0;
+  for (NSUInteger i = 0; i < count; i++) value = (value << 8) | bytes[(*offset)++];
+  *length = value;
+  return YES;
+}
+
+static NSData *LXRSAPublicKeyFromX509(NSData *x509) {
+  const uint8_t *bytes = x509.bytes;
+  NSUInteger total = x509.length, offset = 0, length = 0;
+  if (total < 8 || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
+  if (offset >= total || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
+  if (offset + length > total) return nil;
+  offset += length;
+  if (offset >= total || bytes[offset++] != 0x03 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
+  if (length < 2 || offset + length > total || bytes[offset] != 0x00) return nil;
+  offset++;
+  return [NSData dataWithBytes:bytes + offset length:length - 1];
+}
+
+static NSString *LXRSANoPaddingEncrypt(NSString *data, NSString *publicKeyBase64) {
+  NSData *rawKey = LXRSAPublicKeyFromX509(LXBase64Data(publicKeyBase64));
+  if (rawKey == nil) return @"";
+  NSDictionary *attributes = @{
+    (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeRSA,
+    (__bridge id)kSecAttrKeyClass: (__bridge id)kSecAttrKeyClassPublic,
+    (__bridge id)kSecAttrKeySizeInBits: @2048
+  };
+  CFErrorRef keyError = NULL;
+  SecKeyRef publicKey = SecKeyCreateWithData((__bridge CFDataRef)rawKey, (__bridge CFDictionaryRef)attributes, &keyError);
+  if (publicKey == NULL) {
+    if (keyError) CFRelease(keyError);
+    return @"";
+  }
+  NSData *input = LXBase64Data(data);
+  CFErrorRef encryptError = NULL;
+  CFDataRef encrypted = SecKeyCreateEncryptedData(publicKey, kSecKeyAlgorithmRSAEncryptionRaw, (__bridge CFDataRef)input, &encryptError);
+  CFRelease(publicKey);
+  if (keyError) CFRelease(keyError);
+  if (encrypted == NULL) {
+    if (encryptError) CFRelease(encryptError);
+    return @"";
+  }
+  NSString *result = LXBase64String((__bridge_transfer NSData *)encrypted);
+  if (encryptError) CFRelease(encryptError);
+  return result;
+}
+
+@interface LXUserApiModule : RCTEventEmitter <RCTBridgeModule>
+@property(nonatomic, strong) JSContext *jsContext;
+@property(nonatomic, copy) NSString *runtimeKey;
+@property(nonatomic, assign) BOOL didSendInit;
+@end
+
+@implementation LXUserApiModule
+
+RCT_EXPORT_MODULE(UserApiModule)
+
+- (NSArray<NSString *> *)supportedEvents {
+  return @[@"api-action"];
+}
+
+- (dispatch_queue_t)methodQueue {
+  return dispatch_queue_create("com.lxmusic.userapi", DISPATCH_QUEUE_SERIAL);
+}
+
+- (void)emitAction:(NSString *)action data:(NSString *)data {
+  if (action.length == 0) return;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if ([action isEqualToString:@"init"]) {
+      if (self.didSendInit) return;
+      self.didSendInit = YES;
+    }
+    [self sendEventWithName:@"api-action" body:@{@"action": action, @"data": data ?: @""}];
+  });
+}
+
+- (void)emitLog:(NSString *)type message:(NSString *)message {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [self sendEventWithName:@"api-action" body:@{@"action": @"log", @"type": type ?: @"log", @"log": message ?: @""}];
+  });
+}
+
+- (void)failInitialization:(NSString *)message {
+  NSDictionary *payload = @{@"info": [NSNull null], @"status": @NO, @"errorMessage": message ?: @"Create JavaScript Env Failed"};
+  NSData *json = [NSJSONSerialization dataWithJSONObject:payload options:0 error:nil];
+  NSString *jsonString = json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : @"{}";
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if (!self.didSendInit) {
+      self.didSendInit = YES;
+      [self sendEventWithName:@"api-action" body:@{@"action": @"init", @"errorMessage": message ?: @"Create JavaScript Env Failed", @"data": jsonString}];
+    }
+    [self sendEventWithName:@"api-action" body:@{@"action": @"log", @"type": @"error", @"log": message ?: @"Unknown JavaScript error"}];
+  });
+}
+
+- (void)callJS:(NSString *)action data:(id)data {
+  JSContext *context = self.jsContext;
+  if (context == nil) return;
+  JSValue *function = context[@"__lx_native__"];
+  if (function == nil || function.isUndefined) return;
+  NSMutableArray *arguments = [NSMutableArray arrayWithObjects:self.runtimeKey ?: @"", action ?: @"", nil];
+  if (data != nil && data != [NSNull null]) [arguments addObject:data];
+  [function callWithArguments:arguments];
+}
+
+RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
+  [self destroyContext];
+  self.didSendInit = NO;
+  self.runtimeKey = NSUUID.UUID.UUIDString;
+  JSContext *context = [[JSContext alloc] init];
+  self.jsContext = context;
+  __weak typeof(self) weakSelf = self;
+
+  context.exceptionHandler = ^(JSContext *ctx, JSValue *exception) {
+    NSString *message = exception.toString ?: @"JavaScript runtime exception";
+    [weakSelf emitLog:@"error" message:message];
+    if (!weakSelf.didSendInit) [weakSelf failInitialization:message];
+  };
+
+  context[@"__lx_native_call__"] = ^(NSString *key, NSString *action, NSString *data) {
+    if (![key isEqualToString:weakSelf.runtimeKey]) return;
+    [weakSelf emitAction:action data:data];
+  };
+  context[@"__lx_native_call__utils_str2b64"] = ^NSString *(NSString *value) {
+    return LXBase64String([[value ?: @"" dataUsingEncoding:NSUTF8StringEncoding] copy]);
+  };
+  context[@"__lx_native_call__utils_b642buf"] = ^NSString *(NSString *value) {
+    NSData *data = LXBase64Data(value);
+    NSMutableArray *bytes = [NSMutableArray arrayWithCapacity:data.length];
+    const uint8_t *buffer = data.bytes;
+    for (NSUInteger i = 0; i < data.length; i++) [bytes addObject:@(buffer[i])];
+    NSData *json = [NSJSONSerialization dataWithJSONObject:bytes options:0 error:nil];
+    return json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : @"[]";
+  };
+  context[@"__lx_native_call__utils_str2md5"] = ^NSString *(NSString *value) {
+    return LXMD5(value ?: @"");
+  };
+  context[@"__lx_native_call__utils_aes_encrypt"] = ^NSString *(NSString *data, NSString *key, NSString *iv, NSString *mode) {
+    return LXAES(data ?: @"", key ?: @"", iv ?: @"", mode ?: @"");
+  };
+  context[@"__lx_native_call__utils_rsa_encrypt"] = ^NSString *(NSString *data, NSString *key, NSString *padding) {
+    if ([padding isEqualToString:@"RSA/ECB/NoPadding"]) return LXRSANoPaddingEncrypt(data ?: @"", key ?: @"");
+    return @"";
+  };
+  context[@"__lx_native_call__set_timeout"] = ^(NSNumber *identifier, NSNumber *delay) {
+    NSTimeInterval interval = MAX(0, delay.doubleValue) / 1000.0;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(interval * NSEC_PER_SEC)), weakSelf.methodQueue, ^{
+      [weakSelf callJS:@"__set_timeout__" data:identifier ?: @0];
+    });
+  };
+
+  JSValue *console = [JSValue valueWithNewObjectInContext:context];
+  console[@"log"] = ^(JSValue *value) { [weakSelf emitLog:@"log" message:value.toString]; };
+  console[@"warn"] = ^(JSValue *value) { [weakSelf emitLog:@"warn" message:value.toString]; };
+  console[@"error"] = ^(JSValue *value) { [weakSelf emitLog:@"error" message:value.toString]; };
+  context[@"console"] = console;
+
+  NSString *preloadPath = [[NSBundle mainBundle] pathForResource:@"user-api-preload" ofType:@"js"];
+  NSError *readError = nil;
+  NSString *preload = preloadPath ? [NSString stringWithContentsOfFile:preloadPath encoding:NSUTF8StringEncoding error:&readError] : nil;
+  if (preload.length == 0) {
+    [self failInitialization:readError.localizedDescription ?: @"Cannot load user-api-preload.js"];
+    return;
+  }
+
+  [context evaluateScript:preload];
+  JSValue *setup = context[@"lx_setup"];
+  if (setup == nil || setup.isUndefined) {
+    [self failInitialization:@"LX preload did not define lx_setup"];
+    return;
+  }
+
+  NSString *script = [info[@"script"] isKindOfClass:[NSString class]] ? info[@"script"] : @"";
+  NSArray *setupArguments = @[
+    self.runtimeKey,
+    info[@"id"] ?: @"",
+    info[@"name"] ?: @"Unknown",
+    info[@"description"] ?: @"",
+    info[@"version"] ?: @"",
+    info[@"author"] ?: @"",
+    info[@"homepage"] ?: @"",
+    script
+  ];
+  [setup callWithArguments:setupArguments];
+  [context evaluateScript:script];
+}
+
+RCT_EXPORT_METHOD(sendAction:(NSString *)action info:(NSString *)info)
+{
+  [self callJS:action data:info];
+}
+
+RCT_EXPORT_METHOD(destroy)
+{
+  [self destroyContext];
+}
+
+- (void)destroyContext {
+  if (self.jsContext != nil) {
+    self.jsContext[@"__lx_native_call__"] = nil;
+    self.jsContext = nil;
+  }
+  self.runtimeKey = nil;
+}
+
+@end
 
 @interface LXScreenControlModule : NSObject <RCTBridgeModule>
 @end

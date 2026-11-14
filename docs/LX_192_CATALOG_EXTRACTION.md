@@ -97,6 +97,19 @@ The original `httpFetch(url, options)` returns an object with:
 
 Request behavior includes GET/POST/HEAD, URL-encoded `form`, JSON bodies, custom headers, timeouts, optional binary response, and response parsing that attempts JSON but preserves non-JSON text. The adapter must preserve these semantics for each original module. A JSON-only request wrapper is insufficient.
 
+## MusicXLX native transport foundation
+
+Added `MusicXLX/Infrastructure/Catalog/LXCatalogHTTPTransport.swift`.
+
+It provides:
+- URLSession-backed GET/POST/HEAD-compatible request construction.
+- URL-encoded form bodies and caller-supplied raw body bytes.
+- Request headers, timeout, and cache policy.
+- Raw response bytes plus UTF-8 text and optional JSON decoding.
+- HTTP status, response headers, final URL, and task cancellation.
+
+This is a native transport foundation only. It does not yet expose LX's JavaScript `httpFetch(url, options) -> { promise, cancelHttp }` shape to JavaScriptCore, and no original provider module has been bundled or invoked yet. The next integration step is the JSCore async callback bridge, then loading the original catalog modules against this transport.
+
 ## Integration rules
 
 1. Preserve LX provider IDs: `wy`, `tx`, `kw`, `kg`, `mg`.

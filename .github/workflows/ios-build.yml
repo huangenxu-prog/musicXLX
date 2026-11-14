@@ -23,6 +23,10 @@ on:
       - "package-lock.json"
       - ".github/workflows/ios-build.yml"
 
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

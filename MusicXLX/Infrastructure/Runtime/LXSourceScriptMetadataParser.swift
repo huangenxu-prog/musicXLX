@@ -40,6 +40,6 @@ enum LXSourceScriptMetadataParser {
         let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
         let filtered = value.unicodeScalars.map { allowed.contains($0) ? String($0) : "_" }.joined()
         let result = filtered.trimmingCharacters(in: CharacterSet(charactersIn: "._-"))
-        return String((result.isEmpty ? "LXSource-\\(UUID().uuidString)" : result).prefix(64))
+        return String((result.isEmpty ? "LXSource-\(UUID().uuidString)" : result).prefix(64))
     }
 }

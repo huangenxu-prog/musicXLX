@@ -140,6 +140,9 @@ final class LXCatalogJavaScriptRuntime {
         } else if let body = options["body"], JSONSerialization.isValidJSONObject(body),
                   let data = try? JSONSerialization.data(withJSONObject: body) {
             request.body = data
+            if request.headers["Content-Type"] == nil {
+                request.headers["Content-Type"] = "application/json"
+            }
         }
 
         let wantsBinary = options["binary"] as? Bool == true
@@ -243,6 +246,7 @@ final class LXCatalogJavaScriptRuntime {
         });
       };
 
+      global.httpFetch = global.__lxCatalogHTTPFetch;
       global.__lxCatalogHTTPFetch = function (url, options) {
         options = options || {};
         var id = String(++sequence);

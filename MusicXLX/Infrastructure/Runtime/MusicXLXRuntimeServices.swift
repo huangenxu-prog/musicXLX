@@ -32,7 +32,7 @@ protocol MusicXLXRuntimeServing: MusicCatalogServing {
         let info = Self.musicInfo(for: song, quality: .standard)
         for scriptID in sourceManager.enabledSourceIDs(for: song.source.rawValue) {
             guard let entry = sourceManager.sources().first(where: { $0.metadata.id == scriptID }) else { continue }
-            let cacheKey = "lx-pic|\\(scriptID)|\\(entry.metadata.version)|\\(song.source.rawValue)|\\(song.sourceID)"
+            let cacheKey = "lx-pic|\(scriptID)|\(entry.metadata.version)|\(song.source.rawValue)|\(song.sourceID)"
             if let cached: String = await MusicCache.shared.value(for: cacheKey),
                let url = URL(string: cached), Self.isHTTPURL(url) { return url }
             do {
@@ -52,7 +52,7 @@ protocol MusicXLXRuntimeServing: MusicCatalogServing {
         let info = Self.musicInfo(for: song, quality: .standard)
         for scriptID in sourceManager.enabledSourceIDs(for: song.source.rawValue) {
             guard let entry = sourceManager.sources().first(where: { $0.metadata.id == scriptID }) else { continue }
-            let cacheKey = "lx-lyric|\\(scriptID)|\\(entry.metadata.version)|\\(song.source.rawValue)|\\(song.sourceID)"
+            let cacheKey = "lx-lyric|\(scriptID)|\(entry.metadata.version)|\(song.source.rawValue)|\(song.sourceID)"
             if let cached: CachedLyrics = await MusicCache.shared.value(for: cacheKey) {
                 return (cached.original, cached.translated)
             }

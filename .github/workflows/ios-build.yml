@@ -52,6 +52,20 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm ci
 
+      - name: Apply non-breaking dependency security fixes
+        run: npm audit fix --no-fund || echo "Some advisories may require a major dependency upgrade."
+
+      - name: Reinstall from the updated lockfile
+        run: npm ci
+
+      - name: Upload audited dependency lockfiles
+        uses: actions/upload-artifact@v4
+        with:
+          name: audited-dependencies
+          path: |
+            package.json
+            package-lock.json
+
       - name: Report production dependency vulnerabilities
         run: |
           npm audit --omit=dev --json > "$RUNNER_TEMP/npm-audit.json" || true
@@ -88,6 +102,12 @@ jobs:
         with:
           node-version: 20
           cache: npm
+
+      - name: Download audited dependency lockfiles
+        uses: actions/download-artifact@v4
+        with:
+          name: audited-dependencies
+          path: .
 
       - name: Install JavaScript dependencies
         run: npm ci

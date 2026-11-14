@@ -180,7 +180,8 @@ export const updateNowPlayingTitles = async(titles: NowPlayingTitles) => {
   // Use its supported metadata API on iOS; retain the upstream method on Android.
   if (Platform.OS === 'ios') {
     const currentTrack = await TrackPlayer.getCurrentTrack()
-    if (currentTrack < 0) return
+    // The native iOS bridge resolves NSNull when the queue has no current track.
+    if (currentTrack == null || currentTrack < 0) return
     return TrackPlayer.updateMetadataForTrack(currentTrack, {
       title: titles.title,
       artist: titles.artist,

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 import TrackPlayer, { State } from 'react-native-track-player'
 import BackgroundTimer from 'react-native-background-timer'
 import { defaultUrl } from '@/config'
@@ -222,12 +223,23 @@ const updateMetaInfo = async(mInfo: LX.Player.MusicInfo) => {
     title = playerState.lastLyric
     artist = `${mInfo.name}${mInfo.singer ? ` - ${mInfo.singer}` : ''}`
   }
-  await TrackPlayer.updateNowPlayingMetadata({
+  const metadata = {
     title,
     artist,
     album: mInfo.album ?? undefined,
     artwork,
     duration: state.prevDuration || 0,
+  }
+  if (Platform.OS === 'ios') {
+    // The pinned iOS bridge exposes updateMetadataForTrack, not the two-argument
+    // updateNowPlayingMetadata wrapper used by Android.
+    const currentTrackIndex = await TrackPlayer.getCurrentTrack()
+    if (currentTrackIndex == null || currentTrackIndex < 0) return
+    await TrackPlayer.updateMetadataForTrack(currentTrackIndex, metadata)
+    return
+  }
+  await TrackPlayer.updateNowPlayingMetadata({
+    ...metadata,
     lyric: getCurrentFullLyric(mInfo.id),
   }, state.isPlaying)
 }

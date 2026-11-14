@@ -305,7 +305,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
       },
       md5(str) {
         if (typeof str !== 'string') throw new Error('param required a string')
-        return nativeFuncs.utils_str2md5(encodeURIComponent(str))
+        return nativeFuncs.utils_str2md5(str)
       },
     },
     buffer: {

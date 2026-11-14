@@ -206,13 +206,22 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
     }
 
     private static func bestSupportedQuality(requested: MusicQuality, available: [String]) -> String {
-        let order = MusicQuality.allCases.map(\.rawValue)
-        guard let requestedIndex = order.firstIndex(of: requested.rawValue) else { return available.first ?? MusicQuality.standard.rawValue }
-        let supported = order.filter { available.contains($0) }
-        return supported.last(where: { candidate in
-            guard let index = order.firstIndex(of: candidate) else { return false }
-            return index <= requestedIndex
-        }) ?? supported.first ?? MusicQuality.standard.rawValue
+        guard !available.isEmpty else { return requested.rawValue }
+        if available.contains(requested.rawValue) { return requested.rawValue }
+
+        // LX providers may expose additional quality IDs (for example "hires",
+        // "master", or "192k"). Preserve those declared values rather than
+        // forcing every provider into the four UI labels.
+        let fallbackOrder: [MusicQuality: [String]] = [
+            .standard: ["128k", "192k", "320k", "flac"],
+            .high: ["320k", "192k", "128k"],
+            .lossless: ["flac", "flac24bit", "hires", "master"],
+            .hires: ["flac24bit", "hires", "master", "atmos", "atmos_plus", "flac", "320k"]
+        ]
+        if let candidate = fallbackOrder[requested]?.first(where: { available.contains($0) }) {
+            return candidate
+        }
+        return available.first ?? requested.rawValue
     }
 
     private static func isHTTPURL(_ url: URL) -> Bool {

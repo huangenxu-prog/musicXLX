@@ -51,6 +51,12 @@ struct LXSourceManagerView: View {
                                     Text(entry.isEnabled ? "已启用" : "已停用")
                                         .font(.system(size: 11, weight: .medium))
                                         .foregroundStyle(entry.isEnabled ? Color.green.opacity(0.9) : .white.opacity(0.4))
+                                    let capabilities = services.sourceCapabilities(id: entry.metadata.id)
+                                    if !capabilities.isEmpty {
+                                        Text("平台：" + capabilities.keys.sorted().joined(separator: "、"))
+                                            .font(.system(size: 11))
+                                            .foregroundStyle(.white.opacity(0.55))
+                                    }
                                 }
                                 Spacer(minLength: 8)
                                 if isWorking {

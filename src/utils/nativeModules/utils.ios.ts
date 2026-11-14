@@ -44,7 +44,9 @@ export const onScreenStateChange = (handler: (state: 'ON' | 'OFF') => void): (()
   const subscription = AppState.addEventListener('change', state => {
     handler(state === 'active' ? 'ON' : 'OFF')
   })
-  return () => subscription.remove()
+  return () => {
+    subscription.remove()
+  }
 }
 
 export const getWindowSize = async(): Promise<{ width: number, height: number }> => {
@@ -56,7 +58,9 @@ export const onWindowSizeChange = (handler: (size: { width: number, height: numb
   const subscription = Dimensions.addEventListener('change', ({ window }) => {
     handler({ width: window.width, height: window.height })
   })
-  return () => subscription.remove()
+  return () => {
+    subscription.remove()
+  }
 }
 
 export const isIgnoringBatteryOptimization = async(): Promise<boolean> => false

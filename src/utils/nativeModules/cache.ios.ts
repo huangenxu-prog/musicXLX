@@ -16,5 +16,7 @@ export const getAppCacheSize = async(): Promise<number> => getSize(cacheRoot)
 
 export const clearAppCache = async(): Promise<void> => {
   const items = await RNFS.readDir(cacheRoot)
-  await Promise.all(items.map(item => RNFS.unlink(item.path)))
+  await Promise.all(items.map(async item => {
+    await RNFS.unlink(item.path)
+  }))
 }

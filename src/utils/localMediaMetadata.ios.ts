@@ -37,7 +37,7 @@ export const writePic = async(_filePath: string, _picPath: string): Promise<void
 
 export const readLyric = async(filePath: string, isReadLrcFile = true): Promise<string> => {
   if (!isReadLrcFile) return ''
-  const lyricPath = filePath.replace(/\\.[^./\\]+$/, '') + '.lrc'
+  const lyricPath = filePath.replace(/\.[^./\\]+$/, '') + '.lrc'
   if (!(await RNFS.exists(lyricPath))) return ''
   return RNFS.readFile(lyricPath, 'utf8')
 }

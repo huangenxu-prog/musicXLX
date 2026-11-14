@@ -9,8 +9,8 @@ This inventory records the existing LX Music catalog modules to be reused. It is
 
 | Provider | Search | Charts | Playlist taxonomy/list/detail | Album detail |
 |---|---|---|---|---|
-| NetEase (`wy`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search` | album/detail is exposed through the music detail module; verify the exact album contract before wiring |
-| QQ Music (`tx`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search`; `getRecommendList` is playlist-square data | no standalone album module was found in the provider entry point; verify album endpoints before exposing |
+| NetEase (`wy`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search` | no standalone album-detail provider method found in the provider entry point; verify before exposing |
+| QQ Music (`tx`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search`; `getRecommendList` is playlist-square data | no standalone album-detail provider method found |
 | Kuwo (`kw`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search` | `album.getAlbumListDetail` |
 | Kugou (`kg`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search`; `getSongListRecommend` | `album.getAlbumInfo/getAlbumDetail` |
 | Migu (`mg`) | `musicSearch.search` | `leaderboard.getBoards/getList` | `songList.getTags/getList/getListDetail/search` | `album.getAlbumDetail/getAlbumInfo` |

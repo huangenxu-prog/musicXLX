@@ -562,6 +562,76 @@ RCT_REMAP_METHOD(requestNotificationPermission,
 
 @end
 
+
+@interface LXToastModule : NSObject <RCTBridgeModule>
+@end
+
+@implementation LXToastModule
+
+RCT_EXPORT_MODULE(LXToastModule)
+
+RCT_EXPORT_METHOD(show:(NSString *)message duration:(NSString *)duration position:(NSString *)position)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    UIWindow *window = [UIApplication sharedApplication].keyWindow;
+    if (window == nil) {
+      for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+        if (scene.activationState != UISceneActivationStateForegroundActive || ![scene isKindOfClass:[UIWindowScene class]]) continue;
+        for (UIWindow *candidate in ((UIWindowScene *)scene).windows) {
+          if (candidate.isKeyWindow) { window = candidate; break; }
+        }
+        if (window != nil) break;
+      }
+    }
+    if (window == nil) return;
+
+    UIView *bubble = [[UIView alloc] init];
+    bubble.translatesAutoresizingMaskIntoConstraints = NO;
+    bubble.backgroundColor = [UIColor colorWithWhite:0 alpha:0.82];
+    bubble.layer.cornerRadius = 12;
+    bubble.clipsToBounds = YES;
+
+    UILabel *label = [[UILabel alloc] init];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.text = message ?: @"";
+    label.textColor = UIColor.whiteColor;
+    label.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    label.textAlignment = NSTextAlignmentCenter;
+    label.numberOfLines = 0;
+    [bubble addSubview:label];
+    [window addSubview:bubble];
+
+    UILayoutGuide *safeArea = window.safeAreaLayoutGuide;
+    NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
+      [bubble.centerXAnchor constraintEqualToAnchor:window.centerXAnchor],
+      [bubble.widthAnchor constraintLessThanOrEqualToAnchor:window.widthAnchor constant:-48],
+      [label.topAnchor constraintEqualToAnchor:bubble.topAnchor constant:10],
+      [label.bottomAnchor constraintEqualToAnchor:bubble.bottomAnchor constant:-10],
+      [label.leadingAnchor constraintEqualToAnchor:bubble.leadingAnchor constant:14],
+      [label.trailingAnchor constraintEqualToAnchor:bubble.trailingAnchor constant:-14]
+    ]];
+    if ([position isEqualToString:@"top"]) {
+      [constraints addObject:[bubble.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:18]];
+    } else if ([position isEqualToString:@"center"]) {
+      [constraints addObject:[bubble.centerYAnchor constraintEqualToAnchor:window.centerYAnchor]];
+    } else {
+      [constraints addObject:[bubble.bottomAnchor constraintEqualToAnchor:safeArea.bottomAnchor constant:-22]];
+    }
+    [NSLayoutConstraint activateConstraints:constraints];
+
+    bubble.alpha = 0;
+    [UIView animateWithDuration:0.18 animations:^{ bubble.alpha = 1; }];
+    NSTimeInterval delay = [duration isEqualToString:@"long"] ? 3.2 : 2.0;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+      [UIView animateWithDuration:0.18 animations:^{ bubble.alpha = 0; } completion:^(BOOL finished) {
+        [bubble removeFromSuperview];
+      }];
+    });
+  });
+}
+
+@end
+
 @interface LXScreenControlModule : NSObject <RCTBridgeModule>
 @end
 

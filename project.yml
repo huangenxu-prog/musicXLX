@@ -19,6 +19,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.huangenxu.musicxlx
         PRODUCT_NAME: MusicXLX
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: MusicXLX
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

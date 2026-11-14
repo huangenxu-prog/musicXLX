@@ -114,6 +114,10 @@ Implementation details:
 
 Status: source and bridge wiring are committed, but no Xcode compile or cryptographic test vectors have been run yet. In particular, raw RSA interoperability, Security key import, CommonCrypto mode parity, and the React Native MD5/Base64 edge cases remain unverified on iOS. Do not yet mark NetEase/QQ/Kuwo provider requests as live-tested.
 
+### Buffer call-site audit against the supplied v1.9.2 source
+
+The selected provider source uses the following concrete Buffer operations: `from`, `alloc`, `concat`, `isBuffer`, `slice`, `subarray`, `toString` (`utf8`, `base64`, `hex`), `reverse`, `indexOf`, and indexed byte mutation. `reverse`, `indexOf`, and indexed mutation are inherited from `Uint8Array`; `subarray` must share the original backing storage because Kuwo's lyric decoder mutates bytes returned by `subarray`. The shim was corrected to preserve that view semantics and to keep the Base64 decoder's accumulator bounded across long inputs. This is a source-level correction only; it has not yet been run against the full provider corpus or on iOS JavaScriptCore.
+
 ## Buffer compatibility scope
 
 The supplied LX 1.9.2 source uses the Node Buffer surface in several provider helpers, including Base64/hex decoding, UTF-8 conversion, byte-array construction, slicing, reversing, concatenation, and fixed-size allocation. The first MusicXLX shim is intentionally limited to the operations observed in the selected catalog dependency graph; it is not a complete Node Buffer replacement. It is loaded as an app resource before the provider bundle. The `buffer` package import still needs to be aliased to this global in the reproducible bundle step.

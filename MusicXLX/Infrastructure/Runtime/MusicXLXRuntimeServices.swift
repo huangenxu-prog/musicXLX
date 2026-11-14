@@ -24,90 +24,6 @@ enum MusicXLXRuntimeError: LocalizedError {
 @MainActor
 protocol MusicXLXRuntimeServing: MusicCatalogServing {
     func resolvePlaybackURL(song: MusicSong, quality: MusicQuality, forceRefresh: Bool) async throws -> URL
-    func artworkURL(for song: MusicSong) async throws -> URL?
-    func lyrics(for song: MusicSong) async throws -> (original: String, translated: String?)?
-}
-
-@MainActor
-final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
-    static let shared = MusicXLXRuntimeServices()
-
-    private let sourceManager: LXSourceManager?
-    private let storeError: String?
-
-    private init() {
-        do {
-            let store = try LXSourceStore()
-            let manager = LXSourceManager(store: store)
-            sourceManager = manager
-            storeError = nil
-            manager.restoreEnabledSources()
-        } catch {
-            sourceManager = nil
-            storeError = error.localizedDescription
-        }
-    }
-
-    /// Search, playlists and charts are not part of LX's standard musicUrl/lyric/pic
-    /// contract. They remain explicitly unavailable until a separate catalog API is defined.
-    func search(keyword: String, source: MusicSource, page: Int = 1, count: Int = 20, albumOnly: Bool = false) async throws -> [MusicSong] {
-        throw MusicXLXRuntimeError.runtimeNotInstalled
-    }
-
-    func playlistTracks(keyword: String, count: Int = 50) async throws -> [MusicSong] {
-        throw MusicXLXRuntimeError.runtimeNotInstalled
-    }
-
-    func toplist(_ chartName: String, count: Int = 50) async throws -> [MusicSong] {
-        throw MusicXLXRuntimeError.runtimeNotInstalled
-    }
-
-    func resolvePlaybackURL(song: MusicSong, quality: MusicQuality, forceRefresh: Bool) async throws -> URL {
-        guard let sourceManager else {
-            throw MusicXLXRuntimeError.sourceStoreUnavailable(storeError ?? "未知错误")
-        }
-        let platform = song.source.rawValue
-        let candidates = sourceManager.enabledSourceIDs(for: platform)
-        guard !candidates.isEmpty else {
-            throw MusicXLXRuntimeError.noEnabledSource(platform)
-        }
-
-        var lastError: Error?
-        for scriptID in candidates {
-            guard let entry = sourceManager.sources().first(where: { $0.metadata.id == scriptID }),
-                  let registration = sourceManager.registration(for: scriptID)?.sources[platform] else { continue }
-
-            let selectedQuality = Self.bestSupportedQuality(requested: quality, available: registration.qualitys)
-            let cacheKey = "lx-play-url|\(scriptID)|\(entry.metadata.version)|\(platform)|\(song.sourceID)|\(selectedQuality)"
-            if !forceRefresh, let cached: String = await MusicCache.shared.value(for: cacheKey),
-               let url = URL(string: cached), Self.isHTTPURL(url) {
-                return url
-            }
-
-            do {
-                let result = try await invoke(
-                    manager: sourceManager,
-                    scriptID: scriptID,
-                    platform: platform,
-                    action: "musicUrl",
-                    info: Self.musicInfo(for: song, quality: selectedQuality)
-                )
-                guard let data = result["data"] as? [String: Any],
-                      let rawURL = data["url"] as? String,
-                      let url = URL(string: rawURL),
-                      Self.isHTTPURL(url) else {
-                    throw MusicXLXRuntimeError.malformedResult("musicUrl 缺少有效的 HTTP(S) data.url")
-                }
-                await MusicCache.shared.insert(url.absoluteString, for: cacheKey, ttl: 5 * 60)
-                return url
-            } catch {
-                lastError = error
-                continue
-            }
-        }
-        throw lastError ?? MusicXLXRuntimeError.noEnabledSource(platform)
-    }
-
     func artworkURL(for song: MusicSong) async throws -> URL? {
         if let existing = song.artworkURL { return existing }
         guard let sourceManager else {
@@ -115,9 +31,14 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
         }
         let info = Self.musicInfo(for: song, quality: .standard)
         for scriptID in sourceManager.enabledSourceIDs(for: song.source.rawValue) {
+            guard let entry = sourceManager.sources().first(where: { $0.metadata.id == scriptID }) else { continue }
+            let cacheKey = "lx-pic|\\(scriptID)|\\(entry.metadata.version)|\\(song.source.rawValue)|\\(song.sourceID)"
+            if let cached: String = await MusicCache.shared.value(for: cacheKey),
+               let url = URL(string: cached), Self.isHTTPURL(url) { return url }
             do {
                 let result = try await invoke(manager: sourceManager, scriptID: scriptID, platform: song.source.rawValue, action: "pic", info: info)
                 guard let raw = result["data"] as? String, let url = URL(string: raw), Self.isHTTPURL(url) else { continue }
+                await MusicCache.shared.insert(url.absoluteString, for: cacheKey, ttl: 7 * 24 * 60 * 60)
                 return url
             } catch { continue }
         }
@@ -130,11 +51,18 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
         }
         let info = Self.musicInfo(for: song, quality: .standard)
         for scriptID in sourceManager.enabledSourceIDs(for: song.source.rawValue) {
+            guard let entry = sourceManager.sources().first(where: { $0.metadata.id == scriptID }) else { continue }
+            let cacheKey = "lx-lyric|\\(scriptID)|\\(entry.metadata.version)|\\(song.source.rawValue)|\\(song.sourceID)"
+            if let cached: CachedLyrics = await MusicCache.shared.value(for: cacheKey) {
+                return (cached.original, cached.translated)
+            }
             do {
                 let result = try await invoke(manager: sourceManager, scriptID: scriptID, platform: song.source.rawValue, action: "lyric", info: info)
                 guard let data = result["data"] as? [String: Any],
                       let lyric = data["lyric"] as? String, !lyric.isEmpty else { continue }
-                return (lyric, data["tlyric"] as? String)
+                let translated = data["tlyric"] as? String
+                await MusicCache.shared.insert(CachedLyrics(original: lyric, translated: translated), for: cacheKey, ttl: 24 * 60 * 60)
+                return (lyric, translated)
             } catch { continue }
         }
         return nil

@@ -43,6 +43,6 @@ export const readLyric = async(filePath: string, isReadLrcFile = true): Promise<
 }
 
 export const writeLyric = async(filePath: string, lyric: string): Promise<void> => {
-  const lyricPath = filePath.replace(/\\.[^./\\]+$/, '') + '.lrc'
+  const lyricPath = filePath.replace(/\.[^./\\]+$/, '') + '.lrc'
   await RNFS.writeFile(lyricPath, lyric, 'utf8')
 }

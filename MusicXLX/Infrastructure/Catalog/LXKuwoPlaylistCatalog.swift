@@ -28,7 +28,7 @@ struct LXKuwoPlaylistCatalog {
 
     /// LX default page: source=kw, empty tag, sort=new, page=1.
     func recommendedPlaylists(count: Int = 6) async throws -> [MusicPlaylist] {
-        var components = URLComponents(string: "https://wapi.kuwo.cn/api/pc/classify/playlist/getRcmPlayList")!
+        var components = URLComponents(string: "http://wapi.kuwo.cn/api/pc/classify/playlist/getRcmPlayList")!
         components.queryItems = [
             URLQueryItem(name: "loginUid", value: "0"),
             URLQueryItem(name: "loginSid", value: "0"),
@@ -76,7 +76,7 @@ struct LXKuwoPlaylistCatalog {
         var playlistID = parts[1]
         let rows: [[String: Any]]
         if digest == "13" {
-            var components = URLComponents(string: "https://search.kuwo.cn/r.s")!
+            var components = URLComponents(string: "http://search.kuwo.cn/r.s")!
             components.queryItems = [
                 URLQueryItem(name: "pn", value: "0"),
                 URLQueryItem(name: "rn", value: String(songLimit)),
@@ -116,8 +116,6 @@ struct LXKuwoPlaylistCatalog {
                 throw CatalogError.invalidResponse
             }
             rows = playlistRows
-        } else {
-            throw CatalogError.unsupportedDigest(digest)
         }
 
         var seen = Set<String>()

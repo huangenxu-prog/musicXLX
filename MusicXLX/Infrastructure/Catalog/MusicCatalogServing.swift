@@ -7,12 +7,12 @@ protocol MusicCatalogServing {
     func search(
         keyword: String,
         source: MusicSource,
-        page: Int = 1,
-        count: Int = 20,
-        albumOnly: Bool = false
+        page: Int,
+        count: Int,
+        albumOnly: Bool
     ) async throws -> [MusicSong]
 
-    func playlistTracks(keyword: String, count: Int = 50) async throws -> [MusicSong]
+    func playlistTracks(keyword: String, count: Int) async throws -> [MusicSong]
 
-    func toplist(_ chartName: String, count: Int = 50) async throws -> [MusicSong]
+    func toplist(_ chartName: String, count: Int) async throws -> [MusicSong]
 }

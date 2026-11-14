@@ -229,9 +229,10 @@ const debouncePlay = debounceBackgroundTimer((musicInfo: LX.Player.PlayMusic) =>
 // 处理音乐播放
 const handlePlay = async() => {
   if (!isInitialized()) {
-    await checkNotificationPermission()
-    // Battery-optimization exemptions are Android-only; do not show that prompt on iOS.
-    if (Platform.OS === 'android') void checkIgnoringBatteryOptimization()
+    if (Platform.OS === 'android') {
+      await checkNotificationPermission()
+      void checkIgnoringBatteryOptimization()
+    }
     await playerInitial({
       volume: settingState.setting['player.volume'],
       playRate: settingState.setting['player.playbackRate'],

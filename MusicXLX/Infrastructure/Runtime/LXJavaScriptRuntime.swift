@@ -47,6 +47,8 @@ final class LXJavaScriptRuntime {
     private var context: JSContext?
     private var requestTasks: [String: URLSessionTask] = [:]
     private var timerWorkItems: [Int: DispatchWorkItem] = [:]
+    private var pendingInitCompletion: ((Result<RegisteredSource, Error>) -> Void)?
+    private var initTimeoutWorkItem: DispatchWorkItem?
     private var runtimeToken = UUID().uuidString
     private var scriptKey = UUID().uuidString
     private var isDestroyed = false
@@ -87,18 +89,15 @@ final class LXJavaScriptRuntime {
                 ctx.evaluateScript(script, withSourceURL: URL(string: "musicxlx://source/\(metadata.id).js"))
                 if let exception = ctx.exception { throw RuntimeError.javascript(exception.toString()) }
 
-                // The source must announce EVENT_NAMES.inited before it is considered ready.
-                let deadline = DispatchTime.now() + .seconds(8)
-                self.queue.asyncAfter(deadline: deadline) {
-                    guard !self.isDestroyed, self.context === ctx else { return }
-                    let lx = ctx.objectForKeyedSubscript("lx")
-                    let version = lx?.objectForKeyedSubscript("version")?.toString() ?? ""
-                    if version.isEmpty {
-                        completion(.failure(RuntimeError.javascript("脚本未完成 LX 初始化。")))
-                    } else {
-                        completion(.success(RegisteredSource(sources: [:])))
-                    }
+                // LX source scripts announce readiness through lx.send(EVENT_NAMES.inited, info).
+                self.pendingInitCompletion = completion
+                let timeout = DispatchWorkItem { [weak self, weak ctx] in
+                    guard let self, let ctx, !self.isDestroyed, self.context === ctx else { return }
+                    self.pendingInitCompletion?(.failure(RuntimeError.javascript("脚本在 8 秒内未完成 LX 初始化。")))
+                    self.pendingInitCompletion = nil
                 }
+                self.initTimeoutWorkItem = timeout
+                self.queue.asyncAfter(deadline: .now() + .seconds(8), execute: timeout)
             } catch {
                 self.destroyOnQueue()
                 completion(.failure(error))
@@ -117,6 +116,9 @@ final class LXJavaScriptRuntime {
         requestTasks.removeAll()
         timerWorkItems.values.forEach { $0.cancel() }
         timerWorkItems.removeAll()
+        initTimeoutWorkItem?.cancel()
+        initTimeoutWorkItem = nil
+        pendingInitCompletion = nil
         context?.exceptionHandler = nil
         context?.setObject(nil, forKeyedSubscript: "__lx_native_call__" as NSString)
         context = nil
@@ -189,12 +191,31 @@ final class LXJavaScriptRuntime {
                   let options = object["options"] as? [String: Any] else { return }
             performRequest(key: key, url: url, options: options, token: token)
         case "cancelRequest":
-            requestTasks.removeValue(forKey: payload)?.cancel()
+            let requestKey = (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) as? String ?? payload
+            requestTasks.removeValue(forKey: requestKey)?.cancel()
         case "response":
             // Response action is used by the preload to complete an LX request.
             break
         case "init":
-            NSLog("[MusicXLX:LX] source init: %@", payload)
+            guard let data = payload.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                pendingInitCompletion?(.failure(RuntimeError.javascript("LX 初始化数据格式错误。")))
+                pendingInitCompletion = nil
+                return
+            }
+            guard object["status"] as? Bool == true,
+                  let info = object["info"],
+                  let infoData = try? JSONSerialization.data(withJSONObject: info),
+                  let registered = try? JSONDecoder().decode(RegisteredSource.self, from: infoData) else {
+                let message = object["errorMessage"] as? String ?? "脚本没有注册任何有效音源平台。"
+                pendingInitCompletion?(.failure(RuntimeError.javascript(message)))
+                pendingInitCompletion = nil
+                return
+            }
+            initTimeoutWorkItem?.cancel()
+            initTimeoutWorkItem = nil
+            pendingInitCompletion?(.success(registered))
+            pendingInitCompletion = nil
         case "showUpdateAlert":
             NSLog("[MusicXLX:LX] source update notice: %@", payload)
         default:

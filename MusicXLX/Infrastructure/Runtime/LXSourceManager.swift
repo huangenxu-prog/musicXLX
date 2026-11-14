@@ -75,6 +75,18 @@ final class LXSourceManager {
         registrations[id]
     }
 
+    func performAction(sourceID: String, platform: String, action: String, info: [String: Any], completion: @escaping (Result<[String: Any], Error>) -> Void) {
+        guard let runtime = runtimes[sourceID] else {
+            completion(.failure(LXSourceStore.StoreError.sourceNotFound(sourceID)))
+            return
+        }
+        guard registrations[sourceID]?.sources[platform] != nil else {
+            completion(.failure(LXJavaScriptRuntime.RuntimeError.javascript("当前脚本未注册平台：\\(platform)")))
+            return
+        }
+        runtime.performSourceAction(source: platform, action: action, info: info, completion: completion)
+    }
+
     private func load(entry: LXSourceStore.Entry, completion: @escaping (Result<LXJavaScriptRuntime.RegisteredSource, Error>) -> Void) throws {
         guard let preloadURL = bundle.url(forResource: "user-api-preload", withExtension: "js", subdirectory: "LXRuntime")
                 ?? bundle.url(forResource: "user-api-preload", withExtension: "js") else {

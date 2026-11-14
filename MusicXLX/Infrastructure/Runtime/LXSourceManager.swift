@@ -109,8 +109,12 @@ final class LXSourceManager {
             completion(.failure(LXSourceStore.StoreError.sourceNotFound(sourceID)))
             return
         }
-        guard registrations[sourceID]?.sources[platform] != nil else {
+        guard let registration = registrations[sourceID]?.sources[platform] else {
             completion(.failure(LXJavaScriptRuntime.RuntimeError.javascript("当前脚本未注册平台：\(platform)")))
+            return
+        }
+        guard registration.actions.contains(action) else {
+            completion(.failure(LXJavaScriptRuntime.RuntimeError.javascript("当前脚本的平台未声明动作：\(action)")))
             return
         }
         runtime.performSourceAction(source: platform, action: action, info: info, completion: completion)

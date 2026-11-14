@@ -41,12 +41,16 @@ enum LXCatalogCryptoBridge {
         let sha1: @convention(block) (String) -> String = { text in
             sha1Hex(text)
         }
+        let md5: @convention(block) (String) -> String = { text in
+            md5Hex(text)
+        }
 
         let bridge = JSValue(newObjectIn: context)!
         bridge.setObject(aesEncrypt, forKeyedSubscript: "aesEncryptSync" as NSString)
         bridge.setObject(aesDecrypt, forKeyedSubscript: "aesDecryptSync" as NSString)
         bridge.setObject(rsaEncrypt, forKeyedSubscript: "rsaEncryptSync" as NSString)
         bridge.setObject(sha1, forKeyedSubscript: "sha1" as NSString)
+        bridge.setObject(md5, forKeyedSubscript: "md5" as NSString)
         context.setObject(bridge, forKeyedSubscript: "LXNativeCrypto" as NSString)
     }
 
@@ -202,6 +206,15 @@ enum LXCatalogCryptoBridge {
         let digest = Array(text.utf8).withUnsafeBufferPointer { buffer -> [UInt8] in
             var output = [UInt8](repeating: 0, count: Int(CC_SHA1_DIGEST_LENGTH))
             _ = CC_SHA1(buffer.baseAddress, CC_LONG(buffer.count), &output)
+            return output
+        }
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func md5Hex(_ text: String) -> String {
+        let digest = Array(text.utf8).withUnsafeBufferPointer { buffer -> [UInt8] in
+            var output = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))
+            _ = CC_MD5(buffer.baseAddress, CC_LONG(buffer.count), &output)
             return output
         }
         return digest.map { String(format: "%02x", $0) }.joined()

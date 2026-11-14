@@ -278,7 +278,21 @@ final class LXJavaScriptRuntime {
         if let headers = options["headers"] as? [String: String] {
             headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         }
-        if let body = options["body"] {
+        if let formData = options["formData"] {
+            let boundary = "MusicXLX-\\(UUID().uuidString)"
+            if let encoded = Self.multipartBody(formData, boundary: boundary) {
+                request.httpBody = encoded
+                request.setValue("multipart/form-data; boundary=\\(boundary)", forHTTPHeaderField: "Content-Type")
+            }
+        } else if let form = options["form"] as? [String: Any] {
+            let encoded = form.keys.sorted().map {
+                "\\(Self.formEncode($0))=\\(Self.formEncode(String(describing: form[$0] ?? "")))"
+            }.joined(separator: "&")
+            request.httpBody = encoded.data(using: .utf8)
+            if request.value(forHTTPHeaderField: "Content-Type") == nil {
+                request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            }
+        } else if let body = options["body"] {
             if let text = body as? String {
                 request.httpBody = Data(text.utf8)
             } else if JSONSerialization.isValidJSONObject(body) {
@@ -286,13 +300,8 @@ final class LXJavaScriptRuntime {
                 if request.value(forHTTPHeaderField: "Content-Type") == nil {
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 }
-            }
-        }
-        if let form = options["form"] as? [String: Any],
-           let encoded = form.map({ "\(Self.formEncode($0.key))=\(Self.formEncode(String(describing: $0.value)))" }).joined(separator: "&").data(using: .utf8) {
-            request.httpBody = encoded
-            if request.value(forHTTPHeaderField: "Content-Type") == nil {
-                request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            } else if let bytes = body as? [NSNumber] {
+                request.httpBody = Data(bytes.map { UInt8(truncating: $0) })
             }
         }
         let task = session.dataTask(with: request) { [weak self] data, response, error in
@@ -338,6 +347,44 @@ final class LXJavaScriptRuntime {
         allowed.remove(charactersIn: "&=+")
         return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
     }
+
+    private static func multipartBody(_ formData: Any, boundary: String) -> Data? {
+        let parts: [[Any]]
+        if let object = formData as? [String: Any], let values = object["_parts"] as? [[Any]] {
+            parts = values
+        } else if let values = formData as? [[Any]] {
+            parts = values
+        } else if let object = formData as? [String: Any] {
+            parts = object.keys.sorted().map { [$0, object[$0] ?? ""] }
+        } else {
+            return nil
+        }
+
+        var body = Data()
+        for part in parts where part.count >= 2 {
+            let name = String(describing: part[0])
+            let value = part[1]
+            body.append(Data("--\\(boundary)\\r\\n".utf8))
+            if let file = value as? [String: Any],
+               let uri = file["uri"] as? String,
+               let url = URL(string: uri), url.isFileURL,
+               let data = try? Data(contentsOf: url) {
+                let fileName = (file["name"] as? String) ?? url.lastPathComponent
+                let mime = (file["type"] as? String) ?? "application/octet-stream"
+                body.append(Data("Content-Disposition: form-data; name=\\"\\(name)\\"; filename=\\"\\(fileName)\\"\\r\\n".utf8))
+                body.append(Data("Content-Type: \\(mime)\\r\\n\\r\\n".utf8))
+                body.append(data)
+                body.append(Data("\\r\\n".utf8))
+            } else {
+                body.append(Data("Content-Disposition: form-data; name=\\"\\(name)\\"\\r\\n\\r\\n".utf8))
+                body.append(Data(String(describing: value).utf8))
+                body.append(Data("\\r\\n".utf8))
+            }
+        }
+        body.append(Data("--\\(boundary)--\\r\\n".utf8))
+        return body
+    }
+
 
     private static func jsonString(_ value: [String: Any]) -> String {
         guard let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]),

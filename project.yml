@@ -1,0 +1,24 @@
+name: MusicXLX
+options:
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  MusicXLX:
+    type: application
+    platform: iOS
+    sources:
+      - path: MusicXLX
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.huangenxu.musicxlx
+        PRODUCT_NAME: MusicXLX
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: MusicXLX
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_ALLOWED: NO

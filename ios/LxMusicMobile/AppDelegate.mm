@@ -273,11 +273,15 @@ RCT_EXPORT_METHOD(destroy)
 
 
 static NSData *LXDERLength(NSUInteger length) {
-  if (length < 128) return [NSData dataWithBytes:(uint8_t[]){(uint8_t)length} length:1];
+  if (length < 128) {
+    uint8_t singleByte = (uint8_t)length;
+    return [NSData dataWithBytes:&singleByte length:1];
+  }
   uint8_t bytes[sizeof(NSUInteger)];
   NSUInteger count = 0, value = length;
   while (value > 0) { bytes[sizeof(bytes) - 1 - count++] = (uint8_t)(value & 0xff); value >>= 8; }
-  NSMutableData *result = [NSMutableData dataWithBytes:(uint8_t[]){(uint8_t)(0x80 | count)} length:1];
+  uint8_t lengthHeader = (uint8_t)(0x80 | count);
+  NSMutableData *result = [NSMutableData dataWithBytes:&lengthHeader length:1];
   [result appendBytes:bytes + sizeof(bytes) - count length:count];
   return result;
 }
@@ -292,7 +296,8 @@ static NSData *LXDERWrap(uint8_t tag, NSData *content) {
 static NSData *LXRSAPublicX509FromPKCS1(NSData *raw) {
   const uint8_t oidBytes[] = {0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01,0x05,0x00};
   NSData *algorithm = LXDERWrap(0x30, [NSData dataWithBytes:oidBytes length:sizeof(oidBytes)]);
-  NSMutableData *bitStringContent = [NSMutableData dataWithBytes:(uint8_t[]){0x00} length:1];
+  uint8_t unusedBits = 0x00;
+  NSMutableData *bitStringContent = [NSMutableData dataWithBytes:&unusedBits length:1];
   [bitStringContent appendData:raw];
   NSData *bitString = LXDERWrap(0x03, bitStringContent);
   NSMutableData *outer = [NSMutableData dataWithData:algorithm];

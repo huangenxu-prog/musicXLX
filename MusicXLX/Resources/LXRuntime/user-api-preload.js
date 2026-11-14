@@ -147,6 +147,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
       abort: () => {
         // Drop the callback immediately. A cancelled native URLSession task may
         // still complete asynchronously, but it must not retain this JS closure.
+        requestInfo.aborted = true
         requestQueue.delete(requestKey)
         nativeCall(NATIVE_EVENTS_NAMES.cancelRequest, requestKey)
       },

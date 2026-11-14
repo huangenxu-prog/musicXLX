@@ -48,6 +48,8 @@ final class LXJavaScriptRuntime {
     private var requestTasks: [String: URLSessionTask] = [:]
     private var timerWorkItems: [Int: DispatchWorkItem] = [:]
     private var pendingInitCompletion: ((Result<RegisteredSource, Error>) -> Void)?
+    private var pendingActionCompletions: [String: (Result<[String: Any], Error>) -> Void] = [:]
+    private var actionTimeouts: [String: DispatchWorkItem] = [:]
     private var initTimeoutWorkItem: DispatchWorkItem?
     private var runtimeToken = UUID().uuidString
     private var scriptKey = UUID().uuidString
@@ -109,6 +111,36 @@ final class LXJavaScriptRuntime {
         queue.async { self.destroyOnQueue() }
     }
 
+    /// Invoke an LX-registered provider action (musicUrl, lyric, or pic).
+    /// The JavaScript preload validates and normalizes the provider result before returning it.
+    func performSourceAction(source: String, action: String, info: [String: Any], timeout: TimeInterval = 20, completion: @escaping (Result<[String: Any], Error>) -> Void) {
+        queue.async {
+            guard !self.isDestroyed, self.context != nil else {
+                completion(.failure(RuntimeError.javascript("音源运行时尚未启动。")))
+                return
+            }
+            guard ["musicUrl", "lyric", "pic"].contains(action) else {
+                completion(.failure(RuntimeError.javascript("不支持的音源动作：\\(action)")))
+                return
+            }
+            let requestKey = UUID().uuidString
+            self.pendingActionCompletions[requestKey] = completion
+            let timeoutItem = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.actionTimeouts.removeValue(forKey: requestKey)
+                let callback = self.pendingActionCompletions.removeValue(forKey: requestKey)
+                callback?(.failure(RuntimeError.request("音源解析超时。")))
+            }
+            self.actionTimeouts[requestKey] = timeoutItem
+            self.queue.asyncAfter(deadline: .now() + max(1, timeout), execute: timeoutItem)
+            let payload: [String: Any] = [
+                "requestKey": requestKey,
+                "data": ["source": source, "action": action, "info": info]
+            ]
+            self.callJavaScript(action: "request", json: Self.jsonString(payload))
+        }
+    }
+
     private func destroyOnQueue() {
         isDestroyed = true
         runtimeToken = UUID().uuidString
@@ -119,6 +151,9 @@ final class LXJavaScriptRuntime {
         initTimeoutWorkItem?.cancel()
         initTimeoutWorkItem = nil
         pendingInitCompletion = nil
+        actionTimeouts.values.forEach { $0.cancel() }
+        actionTimeouts.removeAll()
+        pendingActionCompletions.removeAll()
         context?.exceptionHandler = nil
         context?.setObject(nil, forKeyedSubscript: "__lx_native_call__" as NSString)
         context = nil
@@ -194,8 +229,16 @@ final class LXJavaScriptRuntime {
             let requestKey = (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) as? String ?? payload
             requestTasks.removeValue(forKey: requestKey)?.cancel()
         case "response":
-            // Response action is used by the preload to complete an LX request.
-            break
+            guard let data = payload.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let requestKey = object["requestKey"] as? String else { return }
+            actionTimeouts.removeValue(forKey: requestKey)?.cancel()
+            let callback = pendingActionCompletions.removeValue(forKey: requestKey)
+            if object["status"] as? Bool == true, let result = object["result"] as? [String: Any] {
+                callback?(.success(result))
+            } else {
+                callback?(.failure(RuntimeError.request(object["errorMessage"] as? String ?? "音源返回失败。")))
+            }
         case "init":
             guard let data = payload.data(using: .utf8),
                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {

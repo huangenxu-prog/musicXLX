@@ -17,7 +17,7 @@ struct LXSourceManagerView: View {
                 Color(red: 0.025, green: 0.04, blue: 0.085).ignoresSafeArea()
                 if entries.isEmpty {
                     VStack(spacing: 12) {
-                        Image(systemName: "puzzlepiece.extension")
+                        Image(systemName: "puzzlepiece")
                             .font(.system(size: 36, weight: .light))
                             .foregroundStyle(.white.opacity(0.55))
                         Text("尚未导入音源")
@@ -79,10 +79,10 @@ struct LXSourceManagerView: View {
             .navigationTitle("音源管理")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("关闭") { dismiss() }.foregroundStyle(.white)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button { isImporterPresented = true } label: {
                         Image(systemName: "plus").font(.system(size: 16, weight: .semibold))
                     }
@@ -93,7 +93,7 @@ struct LXSourceManagerView: View {
             .fileImporter(isPresented: $isImporterPresented, allowedContentTypes: [.item], allowsMultipleSelection: false) { result in
                 importFile(result)
             }
-            .alert(isErrorPresented ? "操作失败" : "提示", isPresented: $isErrorPresented) {
+            .alert("音源管理", isPresented: $isErrorPresented) {
                 Button("确定", role: .cancel) { }
             } message: {
                 Text(statusMessage ?? "")

@@ -195,6 +195,20 @@ final class LXJavaScriptRuntime {
             return String(data: data, encoding: .utf8) ?? "[]"
         }
         ctx.setObject(decode, forKeyedSubscript: "__lx_native_call__utils_b642buf" as NSString)
+        let bufferToBase64: @convention(block) (String) -> String = { encodedArray in
+            guard let data = encodedArray.data(using: .utf8),
+                  let values = try? JSONSerialization.jsonObject(with: data) as? [NSNumber] else { return "" }
+            return Data(values.map { UInt8(truncating: $0) }).base64EncodedString()
+        }
+        ctx.setObject(bufferToBase64, forKeyedSubscript: "__lx_native_call__utils_buf2b64" as NSString)
+        let randomBytes: @convention(block) (NSNumber) -> String = { count in
+            let length = min(max(0, count.intValue), 65536)
+            var bytes = [UInt8](repeating: 0, count: length)
+            guard SecRandomCopyBytes(kSecRandomDefault, length, &bytes) == errSecSuccess,
+                  let data = try? JSONSerialization.data(withJSONObject: bytes) else { return "[]" }
+            return String(data: data, encoding: .utf8) ?? "[]"
+        }
+        ctx.setObject(randomBytes, forKeyedSubscript: "__lx_native_call__utils_random_bytes" as NSString)
         let md5: @convention(block) (String) -> String = { value in
             let digest = Data(value.utf8).withUnsafeBytes { raw in
                 var output = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))

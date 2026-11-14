@@ -36,8 +36,10 @@ static NSString *LXAES(NSString *data, NSString *key, NSString *iv, NSString *mo
   NSData *keyData = LXBase64Data(key);
   NSData *ivData = LXBase64Data(iv);
   BOOL cbc = [mode containsString:@"CBC"];
-  CCOptions options = cbc ? kCCOptionPKCS7Padding : kCCOptionECBMode;
-  if (cbc) options |= kCCOptionPKCS7Padding;
+  // Android's Cipher.getInstance("AES") defaults to ECB with PKCS5 padding.
+  // CommonCrypto's PKCS7 padding is byte-compatible with PKCS5 for AES.
+  CCOptions options = kCCOptionPKCS7Padding;
+  if (!cbc) options |= kCCOptionECBMode;
   unsigned char ivBytes[kCCBlockSizeAES128] = {0};
   if (cbc && ivData.length > 0) memcpy(ivBytes, ivData.bytes, MIN(ivData.length, sizeof(ivBytes)));
   size_t outputCapacity = input.length + kCCBlockSizeAES128;

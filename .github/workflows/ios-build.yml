@@ -49,6 +49,22 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm ci
 
+      - name: ESLint check
+        run: npm run lint
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Bundle JavaScript for iOS
+        run: |
+          mkdir -p "$RUNNER_TEMP/ios-assets"
+          npx react-native bundle \
+            --platform ios \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output "$RUNNER_TEMP/main.jsbundle" \
+            --assets-dest "$RUNNER_TEMP/ios-assets"
+
       - name: Install CocoaPods dependencies
         run: pod install --project-directory=ios
 

@@ -176,9 +176,11 @@ RCT_EXPORT_MODULE(UserApiModule)
   return queue;
 }
 
-- (void)emitAction:(NSString *)action data:(NSString *)data {
-  if (action.length == 0) return;
+- (void)emitAction:(NSString *)action data:(NSString *)data runtimeKey:(NSString *)runtimeKey {
+  if (action.length == 0 || runtimeKey.length == 0) return;
   dispatch_async(dispatch_get_main_queue(), ^{
+    // A script may have been replaced while this event was waiting on the main queue.
+    if (![self.runtimeKey isEqualToString:runtimeKey]) return;
     if ([action isEqualToString:@"init"]) {
       if (self.didSendInit) return;
       self.didSendInit = YES;
@@ -187,17 +189,20 @@ RCT_EXPORT_MODULE(UserApiModule)
   });
 }
 
-- (void)emitLog:(NSString *)type message:(NSString *)message {
+- (void)emitLog:(NSString *)type message:(NSString *)message runtimeKey:(NSString *)runtimeKey {
+  if (runtimeKey.length == 0) return;
   dispatch_async(dispatch_get_main_queue(), ^{
+    if (![self.runtimeKey isEqualToString:runtimeKey]) return;
     [self sendEventWithName:@"api-action" body:@{@"action": @"log", @"type": type ?: @"log", @"log": message ?: @""}];
   });
 }
 
-- (void)failInitialization:(NSString *)message {
+- (void)failInitialization:(NSString *)message runtimeKey:(NSString *)runtimeKey {
   NSDictionary *payload = @{@"info": [NSNull null], @"status": @NO, @"errorMessage": message ?: @"Create JavaScript Env Failed"};
   NSData *json = [NSJSONSerialization dataWithJSONObject:payload options:0 error:nil];
   NSString *jsonString = json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : @"{}";
   dispatch_async(dispatch_get_main_queue(), ^{
+    if (![self.runtimeKey isEqualToString:runtimeKey]) return;
     if (!self.didSendInit) {
       self.didSendInit = YES;
       [self sendEventWithName:@"api-action" body:@{@"action": @"init", @"errorMessage": message ?: @"Create JavaScript Env Failed", @"data": jsonString}];
@@ -218,21 +223,23 @@ RCT_EXPORT_MODULE(UserApiModule)
 
 RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
   [self destroyContext];
-  self.didSendInit = NO;
   self.runtimeKey = NSUUID.UUID.UUIDString;
+  NSString *scriptRuntimeKey = [self.runtimeKey copy];
+  dispatch_async(dispatch_get_main_queue(), ^{ self.didSendInit = NO; });
   JSContext *context = [[JSContext alloc] init];
   self.jsContext = context;
   __weak typeof(self) weakSelf = self;
 
   context.exceptionHandler = ^(JSContext *ctx, JSValue *exception) {
+    if (![scriptRuntimeKey isEqualToString:weakSelf.runtimeKey]) return;
     NSString *message = exception.toString ?: @"JavaScript runtime exception";
-    [weakSelf emitLog:@"error" message:message];
-    if (!weakSelf.didSendInit) [weakSelf failInitialization:message];
+    [weakSelf emitLog:@"error" message:message runtimeKey:scriptRuntimeKey];
+    [weakSelf failInitialization:message runtimeKey:scriptRuntimeKey];
   };
 
   context[@"__lx_native_call__"] = ^(NSString *key, NSString *action, NSString *data) {
-    if (![key isEqualToString:weakSelf.runtimeKey]) return;
-    [weakSelf emitAction:action data:data];
+    if (![key isEqualToString:scriptRuntimeKey] || ![key isEqualToString:weakSelf.runtimeKey]) return;
+    [weakSelf emitAction:action data:data runtimeKey:scriptRuntimeKey];
   };
   context[@"__lx_native_call__utils_str2b64"] = ^NSString *(NSString *value) {
     NSString *source = value ?: @"";
@@ -280,29 +287,29 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
   };
 
   JSValue *console = [JSValue valueWithNewObjectInContext:context];
-  console[@"log"] = ^(JSValue *value) { [weakSelf emitLog:@"log" message:value.toString]; };
-  console[@"warn"] = ^(JSValue *value) { [weakSelf emitLog:@"warn" message:value.toString]; };
-  console[@"error"] = ^(JSValue *value) { [weakSelf emitLog:@"error" message:value.toString]; };
+  console[@"log"] = ^(JSValue *value) { [weakSelf emitLog:@"log" message:value.toString runtimeKey:scriptRuntimeKey]; };
+  console[@"warn"] = ^(JSValue *value) { [weakSelf emitLog:@"warn" message:value.toString runtimeKey:scriptRuntimeKey]; };
+  console[@"error"] = ^(JSValue *value) { [weakSelf emitLog:@"error" message:value.toString runtimeKey:scriptRuntimeKey]; };
   context[@"console"] = console;
 
   NSString *preloadPath = [[NSBundle mainBundle] pathForResource:@"user-api-preload" ofType:@"js"];
   NSError *readError = nil;
   NSString *preload = preloadPath ? [NSString stringWithContentsOfFile:preloadPath encoding:NSUTF8StringEncoding error:&readError] : nil;
   if (preload.length == 0) {
-    [self failInitialization:readError.localizedDescription ?: @"Cannot load user-api-preload.js"];
+    [self failInitialization:readError.localizedDescription ?: @"Cannot load user-api-preload.js" runtimeKey:scriptRuntimeKey];
     return;
   }
 
   [context evaluateScript:preload];
   JSValue *setup = context[@"lx_setup"];
   if (setup == nil || setup.isUndefined) {
-    [self failInitialization:@"LX preload did not define lx_setup"];
+    [self failInitialization:@"LX preload did not define lx_setup" runtimeKey:scriptRuntimeKey];
     return;
   }
 
   NSString *script = [info[@"script"] isKindOfClass:[NSString class]] ? info[@"script"] : @"";
   NSArray *setupArguments = @[
-    self.runtimeKey,
+    scriptRuntimeKey,
     info[@"id"] ?: @"",
     info[@"name"] ?: @"Unknown",
     info[@"description"] ?: @"",

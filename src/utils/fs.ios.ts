@@ -15,6 +15,23 @@ export const privateStorageDirectoryPath = documentRoot
 
 const getName = (path: string) => path.replace(/\\/+$/, '').split('/').pop() ?? path
 const getParent = (path: string) => path.replace(/\\/+$/, '').split('/').slice(0, -1).join('/') || '/'
+const getMimeType = (path: string) => {
+  const extension = extname(getName(path)).toLowerCase()
+  const types: Record<string, string> = {
+    mp3: 'audio/mpeg',
+    m4a: 'audio/mp4',
+    aac: 'audio/aac',
+    flac: 'audio/flac',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+    opus: 'audio/opus',
+    aiff: 'audio/aiff',
+    alac: 'audio/alac',
+    lrc: 'text/plain',
+    json: 'application/json',
+  }
+  return types[extension] ?? ''
+}
 
 const toFileType = (item: {
   path: string
@@ -32,7 +49,7 @@ const toFileType = (item: {
   isDirectory: item.isDirectory?.() ?? false,
   canRead: true,
   data: item.path,
-  mimeType: '',
+  mimeType: getMimeType(item.path),
 })
 
 export const extname = (name: string) => name.lastIndexOf('.') > 0 ? name.substring(name.lastIndexOf('.') + 1) : ''
@@ -66,6 +83,7 @@ export const readDir = async(path: string): Promise<FileType[]> => {
 }
 
 export const unlink = async(path: string): Promise<boolean> => {
+  if (!(await RNFS.exists(path))) return false
   await RNFS.unlink(path)
   return true
 }

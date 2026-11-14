@@ -14,5 +14,9 @@ protocol MusicCatalogServing {
 
     func playlistTracks(keyword: String, count: Int) async throws -> [MusicSong]
 
+    func recommendedPlaylists(count: Int) async throws -> [MusicPlaylist]
+
+    func playlistTracks(_ playlist: MusicPlaylist, count: Int) async throws -> [MusicSong]
+
     func toplist(_ chartName: String, count: Int) async throws -> [MusicSong]
 }

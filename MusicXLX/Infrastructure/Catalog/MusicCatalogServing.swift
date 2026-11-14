@@ -1,8 +1,7 @@
 import Foundation
 
-/// Catalog/search boundary consumed by the finalized discovery UI.
-/// Implementations are supplied by the active LX JavaScript source runtime;
-/// the UI must not know about GDStudio or any individual music provider.
+/// Search and catalog boundary used by the finalized MusicX interface.
+/// Implementations are provided by the active LX JavaScript source runtime.
 @MainActor
 protocol MusicCatalogServing {
     func search(

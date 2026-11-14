@@ -71,7 +71,7 @@ export const getPersistedUriList = async(): Promise<string[]> => [documentRoot]
 // iOS uses UIDocumentPicker to copy selected files into the app sandbox.
 export const selectFile = async(_options: OpenDocumentOptions): Promise<FileType> => {
   const picker = NativeModules.LXDocumentPicker
-  if (!picker?.pickFile) throw new Error('iOS document picker is not installed yet')
+  if (!picker?.pickFile) throw new Error('iOS document picker is unavailable')
   return picker.pickFile(_options)
 }
 

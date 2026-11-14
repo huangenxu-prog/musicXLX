@@ -90,6 +90,18 @@ The closure reaches these non-relative dependencies:
   
 This makes the extraction strategy clearer: do not bundle the five provider root indexes wholesale. Bundle the original catalog submodules (search, leaderboard, playlist, and the explicitly needed album/detail modules), their local data-normalization dependencies, and supply narrow runtime shims for request, crypto, Buffer, pako, MD5/base64, and string decoding.
 
+## Crypto compatibility details verified against LX 1.9.2 Android implementation
+
+The provider crypto imports are not generic asynchronous-only APIs. The original crypto.ts exposes synchronous AES and RSA methods used directly while constructing catalog request parameters:
+
+- aesEncryptSync(text, key, iv, mode) and aesDecryptSync(...) accept Base64-encoded text/key/IV and return the encrypted Base64 string or decrypted UTF-8 string.
+- AES modes used by the SDK are AES/CBC/PKCS7Padding and AES (the Android implementation resolves the latter through its provider); the explicit source constant is AES.
+- rsaEncryptSync(text, publicKey, padding) accepts Base64 plaintext and a Base64 DER public key, returning Base64 ciphertext. NetEase uses RSA/ECB/NoPadding.
+- hashSHA1(text) is asynchronous and returns a lowercase hexadecimal SHA-1 digest; QQ's zzcSign awaits it before building the request signature.
+- NetEase imports btoa from react-native-quick-base64; MD5 is provided by the provider's toMD5 helper, which depends on react-native-quick-md5.
+
+The supplied LX source archive includes the Android implementation in android/app/src/main/java/cn/toside/music/mobile/crypto/{CryptoModule,AES,RSA}.java. These semantics are the compatibility reference; do not substitute WebCrypto defaults without matching input/output encoding, padding, and RSA behavior. The current MusicXLX JavaScriptCore bridge still has no crypto exports, so NetEase and QQ signed catalog requests cannot yet be considered runnable.
+
 ## Transport compatibility contract
 
 The original `httpFetch(url, options)` returns an object with:

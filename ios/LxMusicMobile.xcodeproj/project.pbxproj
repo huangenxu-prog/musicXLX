@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F4E5D6C7B8A9012A3B4C5D6E /* MobileCoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E4F5A6B7C8D9012A3B4C5D6E /* MobileCoreServices.framework */; };
 		F2E3D4C5B6A708192A3B4C5D /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E2F3A4B5C6D708192A3B4C5D /* Security.framework */; };
 		F3E4D5C6B7A8091A2B3C4D5E /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3F4A5B6C7D8091A2B3C4D5E /* UserNotifications.framework */; };
 		F1E2D3C4B5A60718293A4B5C /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ED297162215061F000B7C4FE /* JavaScriptCore.framework */; };
@@ -53,6 +54,7 @@
 		E1F2A3B4C5D60718293A4B5C /* user-api-preload.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "user-api-preload.js"; sourceTree = "<group>"; };
 		E2F3A4B5C6D708192A3B4C5D /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		E3F4A5B6C7D8091A2B3C4D5E /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+		E4F5A6B7C8D9012A3B4C5D6E /* MobileCoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MobileCoreServices.framework; path = System/Library/Frameworks/MobileCoreServices.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +74,7 @@
 				F1E2D3C4B5A60718293A4B5C /* JavaScriptCore.framework in Frameworks */,
 				F2E3D4C5B6A708192A3B4C5D /* Security.framework in Frameworks */,
 				F3E4D5C6B7A8091A2B3C4D5E /* UserNotifications.framework in Frameworks */,
+				F4E5D6C7B8A9012A3B4C5D6E /* MobileCoreServices.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -116,6 +119,7 @@
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				E2F3A4B5C6D708192A3B4C5D /* Security.framework */,
 				E3F4A5B6C7D8091A2B3C4D5E /* UserNotifications.framework */,
+				E4F5A6B7C8D9012A3B4C5D6E /* MobileCoreServices.framework */,
 				5DCACB8F33CDC322A6C60F78 /* libPods-LxMusicMobile.a */,
 				19F6CBCC0A4E27FBF8BF4A61 /* libPods-LxMusicMobile-LxMusicMobileTests.a */,
 			);

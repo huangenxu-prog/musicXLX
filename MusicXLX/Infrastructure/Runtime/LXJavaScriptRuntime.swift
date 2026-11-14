@@ -279,14 +279,14 @@ final class LXJavaScriptRuntime {
             headers.forEach { request.setValue($1, forHTTPHeaderField: $0) }
         }
         if let formData = options["formData"] {
-            let boundary = "MusicXLX-\\(UUID().uuidString)"
+            let boundary = "MusicXLX-\(UUID().uuidString)"
             if let encoded = Self.multipartBody(formData, boundary: boundary) {
                 request.httpBody = encoded
-                request.setValue("multipart/form-data; boundary=\\(boundary)", forHTTPHeaderField: "Content-Type")
+                request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
             }
         } else if let form = options["form"] as? [String: Any] {
             let encoded = form.keys.sorted().map {
-                "\\(Self.formEncode($0))=\\(Self.formEncode(String(describing: form[$0] ?? "")))"
+                "\(Self.formEncode($0))=\(Self.formEncode(String(describing: form[$0] ?? "")))"
             }.joined(separator: "&")
             request.httpBody = encoded.data(using: .utf8)
             if request.value(forHTTPHeaderField: "Content-Type") == nil {
@@ -364,24 +364,24 @@ final class LXJavaScriptRuntime {
         for part in parts where part.count >= 2 {
             let name = String(describing: part[0])
             let value = part[1]
-            body.append(Data("--\\(boundary)\\r\\n".utf8))
+            body.append(Data("--\(boundary)\r\n".utf8))
             if let file = value as? [String: Any],
                let uri = file["uri"] as? String,
                let url = URL(string: uri), url.isFileURL,
                let data = try? Data(contentsOf: url) {
                 let fileName = (file["name"] as? String) ?? url.lastPathComponent
                 let mime = (file["type"] as? String) ?? "application/octet-stream"
-                body.append(Data("Content-Disposition: form-data; name=\\"\\(name)\\"; filename=\\"\\(fileName)\\"\\r\\n".utf8))
-                body.append(Data("Content-Type: \\(mime)\\r\\n\\r\\n".utf8))
+                body.append(Data("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(fileName)\"\r\n".utf8))
+                body.append(Data("Content-Type: \(mime)\r\n\r\n".utf8))
                 body.append(data)
-                body.append(Data("\\r\\n".utf8))
+                body.append(Data("\r\n".utf8))
             } else {
-                body.append(Data("Content-Disposition: form-data; name=\\"\\(name)\\"\\r\\n\\r\\n".utf8))
+                body.append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
                 body.append(Data(String(describing: value).utf8))
-                body.append(Data("\\r\\n".utf8))
+                body.append(Data("\r\n".utf8))
             }
         }
-        body.append(Data("--\\(boundary)--\\r\\n".utf8))
+        body.append(Data("--\(boundary)--\r\n".utf8))
         return body
     }
 

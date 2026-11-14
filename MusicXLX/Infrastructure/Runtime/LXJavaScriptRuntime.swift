@@ -382,7 +382,7 @@ final class LXJavaScriptRuntime {
             if let file = value as? [String: Any],
                let uri = file["uri"] as? String,
                let url = URL(string: uri), url.isFileURL,
-               let data = try? Data(contentsOf: url) {
+               let data = Self.readSecurityScopedFile(at: url) {
                 let fileName = Self.safeMultipartHeader((file["name"] as? String) ?? url.lastPathComponent)
                 let mime = Self.safeMultipartHeader((file["type"] as? String) ?? "application/octet-stream")
                 body.append(Data("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(fileName)\"\r\n".utf8))
@@ -399,6 +399,16 @@ final class LXJavaScriptRuntime {
         return body
     }
 
+
+    private static func readSecurityScopedFile(at url: URL) -> Data? {
+        let didStartAccessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartAccessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        return try? Data(contentsOf: url)
+    }
 
     private static func safeMultipartHeader(_ value: String) -> String {
         value

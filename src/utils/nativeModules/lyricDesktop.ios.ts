@@ -35,7 +35,7 @@ export const setPosition = async(_x: number, _y: number): Promise<void> => {}
 export const setMaxLineNum = async(_maxLineNum: number): Promise<void> => {}
 export const setWidth = async(_width: number): Promise<void> => {}
 export const setLyricTextPosition = async(_textX: string, _textY: string): Promise<void> => {}
-export const checkOverlayPermission = async(): Promise<boolean> => false
+export const checkOverlayPermission = async(): Promise<void> => {}
 export const openOverlayPermissionActivity = async(): Promise<void> => {}
 export const onPositionChange = (_handler: (position: { x: number, y: number }) => void): (() => void) => () => {}
 export const onLyricLinePlay = (_handler: (lineInfo: { text: string, extendedLyrics: string[] }) => void): (() => void) => () => {}

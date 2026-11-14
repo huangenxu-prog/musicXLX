@@ -82,6 +82,21 @@ final class LXCatalogJavaScriptRuntime {
             }
             context.setObject(nativeComplete, forKeyedSubscript: "__lx_catalog_native_complete" as NSString)
 
+            // The LX catalog modules import Node's Buffer package. Install the
+            // deliberately limited shim before evaluating the bundled source.
+            let bufferURL = Bundle.main.url(forResource: "lx-buffer", withExtension: "js", subdirectory: "LXRuntime")
+                ?? Bundle.main.url(forResource: "lx-buffer", withExtension: "js")
+            guard let bufferURL,
+                  let bufferShim = try? String(contentsOf: bufferURL, encoding: .utf8) else {
+                completion(.failure(RuntimeError.script("缺少 LX Buffer 兼容脚本资源 lx-buffer.js。")))
+                return
+            }
+            context.evaluateScript(bufferShim, withSourceURL: bufferURL)
+            if let exception = context.exception {
+                completion(.failure(RuntimeError.script(exception.toString())))
+                return
+            }
+
             context.evaluateScript(Self.compatibilityBootstrap)
             if let exception = context.exception {
                 completion(.failure(RuntimeError.script(exception.toString())))

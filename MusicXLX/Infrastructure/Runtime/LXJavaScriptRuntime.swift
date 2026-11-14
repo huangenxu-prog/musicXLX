@@ -482,8 +482,15 @@ final class LXJavaScriptRuntime {
             throw RuntimeError.unsupportedCrypto(error?.takeRetainedValue().localizedDescription ?? "RSA 公钥格式无效")
         }
         let algorithm: SecKeyAlgorithm = .rsaEncryptionRaw
+        let blockSize = SecKeyGetBlockSize(key)
+        guard input.count <= blockSize else {
+            throw RuntimeError.unsupportedCrypto("RSA 明文超过密钥块长度")
+        }
+        // LX desktop's RSA_NO_PADDING helper left-pads short plaintexts with
+        // zero bytes to the RSA modulus length before raw RSA encryption.
+        let paddedInput = Data(repeating: 0, count: blockSize - input.count) + input
         guard SecKeyIsAlgorithmSupported(key, .encrypt, algorithm),
-              let encrypted = SecKeyCreateEncryptedData(key, algorithm, input as CFData, &error) else {
+              let encrypted = SecKeyCreateEncryptedData(key, algorithm, paddedInput as CFData, &error) else {
             throw RuntimeError.unsupportedCrypto(error?.takeRetainedValue().localizedDescription ?? "RSA 加密失败")
         }
         return (encrypted as Data).base64EncodedString()

@@ -146,11 +146,22 @@ static NSString *LXRSANoPaddingEncrypt(NSString *data, NSString *publicKeyBase64
 @property(nonatomic, strong) JSContext *jsContext;
 @property(nonatomic, copy) NSString *runtimeKey;
 @property(nonatomic, assign) BOOL didSendInit;
+@property(nonatomic, strong) NSMutableDictionary<NSNumber *, dispatch_source_t> *timeoutSources;
+@property(nonatomic, strong) NSMutableDictionary<NSNumber *, NSString *> *timeoutTokens;
 @end
 
 @implementation LXUserApiModule
 
 RCT_EXPORT_MODULE(UserApiModule)
+
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _timeoutSources = [NSMutableDictionary dictionary];
+    _timeoutTokens = [NSMutableDictionary dictionary];
+  }
+  return self;
+}
 
 - (NSArray<NSString *> *)supportedEvents {
   return @[@"api-action"];
@@ -245,10 +256,27 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
     return LXRSANoPaddingEncrypt(data ?: @"", key ?: @"", padding ?: @"");
   };
   context[@"__lx_native_call__set_timeout"] = ^(NSNumber *identifier, NSNumber *delay) {
+    LXUserApiModule *strongSelf = weakSelf;
+    if (strongSelf == nil) return;
+    NSNumber *timerId = identifier ?: @0;
     NSTimeInterval interval = MAX(0, delay.doubleValue) / 1000.0;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(interval * NSEC_PER_SEC)), weakSelf.methodQueue, ^{
-      [weakSelf callJS:@"__set_timeout__" data:identifier ?: @0];
+    dispatch_source_t previousTimer = strongSelf.timeoutSources[timerId];
+    if (previousTimer != nil) dispatch_source_cancel(previousTimer);
+    NSString *token = NSUUID.UUID.UUIDString;
+    dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, strongSelf.methodQueue);
+    strongSelf.timeoutSources[timerId] = timer;
+    strongSelf.timeoutTokens[timerId] = token;
+    dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(interval * NSEC_PER_SEC)), DISPATCH_TIME_FOREVER, 0);
+    dispatch_source_set_event_handler(timer, ^{
+      LXUserApiModule *module = weakSelf;
+      if (module == nil || ![module.timeoutTokens[timerId] isEqualToString:token]) return;
+      dispatch_source_t activeTimer = module.timeoutSources[timerId];
+      [module.timeoutTokens removeObjectForKey:timerId];
+      [module.timeoutSources removeObjectForKey:timerId];
+      if (activeTimer != nil) dispatch_source_cancel(activeTimer);
+      [module callJS:@"__set_timeout__" data:timerId];
     });
+    dispatch_resume(timer);
   };
 
   JSValue *console = [JSValue valueWithNewObjectInContext:context];
@@ -298,6 +326,12 @@ RCT_EXPORT_METHOD(destroy)
 }
 
 - (void)destroyContext {
+  for (NSNumber *timerId in self.timeoutSources.allKeys) {
+    dispatch_source_t timer = self.timeoutSources[timerId];
+    if (timer != nil) dispatch_source_cancel(timer);
+  }
+  [self.timeoutSources removeAllObjects];
+  [self.timeoutTokens removeAllObjects];
   if (self.jsContext != nil) {
     self.jsContext[@"__lx_native_call__"] = nil;
     self.jsContext = nil;

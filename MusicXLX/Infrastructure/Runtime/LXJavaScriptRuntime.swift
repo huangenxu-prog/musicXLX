@@ -343,7 +343,16 @@ final class LXJavaScriptRuntime {
                 } else if let response = response as? HTTPURLResponse {
                     let raw = data ?? Data()
                     let binary = options["binary"] as? Bool == true
-                    let body: Any = binary ? Array(raw) : (String(data: raw, encoding: .utf8) ?? raw.base64EncodedString())
+                    let responseText = String(data: raw, encoding: .utf8) ?? raw.base64EncodedString()
+                    let body: Any
+                    if binary {
+                        body = Array(raw)
+                    } else if let jsonData = responseText.data(using: .utf8),
+                              let json = try? JSONSerialization.jsonObject(with: jsonData, options: [.fragmentsAllowed]) {
+                        body = json
+                    } else {
+                        body = responseText
+                    }
                     let headers = response.allHeaderFields.reduce(into: [String: String]()) { output, pair in
                         output[String(describing: pair.key)] = String(describing: pair.value)
                     }
@@ -351,6 +360,8 @@ final class LXJavaScriptRuntime {
                         "statusCode": response.statusCode,
                         "statusMessage": HTTPURLResponse.localizedString(forStatusCode: response.statusCode),
                         "headers": headers,
+                        "bytes": raw.count,
+                        "raw": Array(raw),
                         "body": body
                     ]]
                 } else {

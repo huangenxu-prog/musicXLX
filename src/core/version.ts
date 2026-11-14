@@ -4,6 +4,7 @@ import versionActions from '@/store/version/action'
 import versionState, { type InitState } from '@/store/version/state'
 import { getIgnoreVersion, getIgnoreVersionFailTipTime, saveIgnoreVersion, saveIgnoreVersionFailTipTime } from '@/utils/data'
 import { showVersionModal } from '@/navigation'
+import { Platform } from 'react-native'
 import { Navigation } from 'react-native-navigation'
 import { toast } from '@/utils/tools'
 
@@ -20,6 +21,8 @@ export const hideModal = (componentId: string) => {
 }
 
 export const checkUpdate = async() => {
+  // The bundled upstream updater downloads Android APKs; it is not an iOS updater.
+  if (Platform.OS !== 'android') return
   versionActions.setVersionInfo({ status: 'checking' })
   let versionInfo: InitState['versionInfo'] = { ...versionState.versionInfo }
   try {

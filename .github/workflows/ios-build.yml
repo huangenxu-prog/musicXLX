@@ -55,9 +55,6 @@ jobs:
       - name: Apply non-breaking dependency security fixes
         run: npm audit fix --no-fund || echo "Some advisories may require a major dependency upgrade."
 
-      - name: Reinstall from the updated lockfile
-        run: npm ci
-
       - name: Upload audited dependency lockfiles
         uses: actions/upload-artifact@v4
         with:

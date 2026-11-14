@@ -47,6 +47,10 @@ final class LXCatalogJavaScriptRuntime {
                 NSLog("[MusicXLX:LXCatalog] %@", exception?.toString() ?? "JavaScript exception")
             }
 
+            // Synchronous AES/RSA and SHA-1 adapters required by LX 1.9.2
+            // provider signing code. The bundle's crypto shim calls this object.
+            LXCatalogCryptoBridge.install(in: context)
+
             let nativeFetch: @convention(block) (String, String, String) -> Void = { [weak self] requestID, urlString, optionsJSON in
                 guard let self else { return }
                 self.queue.async {

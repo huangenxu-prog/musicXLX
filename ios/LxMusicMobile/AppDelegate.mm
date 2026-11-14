@@ -414,8 +414,9 @@ static NSString *LXAESDecrypt(NSString *data, NSString *key, NSString *iv, NSStr
   NSData *keyData = LXBase64Data(key);
   NSData *ivData = LXBase64Data(iv);
   BOOL cbc = [mode containsString:@"CBC"];
-  CCOptions options = cbc ? kCCOptionPKCS7Padding : kCCOptionECBMode;
-  if (cbc) options |= kCCOptionPKCS7Padding;
+  // Match Android's AES/ECB/PKCS5Padding default for the "AES" mode.
+  CCOptions options = kCCOptionPKCS7Padding;
+  if (!cbc) options |= kCCOptionECBMode;
   unsigned char ivBytes[kCCBlockSizeAES128] = {0};
   if (cbc && ivData.length > 0) memcpy(ivBytes, ivData.bytes, MIN(ivData.length, sizeof(ivBytes)));
   size_t outputCapacity = input.length + kCCBlockSizeAES128;

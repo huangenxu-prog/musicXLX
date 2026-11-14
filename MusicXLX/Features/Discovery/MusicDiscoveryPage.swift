@@ -530,11 +530,11 @@ struct MusicDiscoveryPage: View {
             case .newReleases:
                 result = try await service.toplist("新歌榜", count: 50)
             case .album:
-                result = try await service.search(keyword: query, source: .netease, count: 50, albumOnly: true)
+                result = try await service.search(keyword: query, source: .netease, page: 1, count: 50, albumOnly: true)
             case .playlist:
                 result = try await service.playlistTracks(keyword: query, count: 50)
             default:
-                result = try await service.search(keyword: query, source: .netease, count: 30)
+                result = try await service.search(keyword: query, source: .netease, page: 1, count: 30, albumOnly: false)
             }
             guard !Task.isCancelled else { return }
             songs = result

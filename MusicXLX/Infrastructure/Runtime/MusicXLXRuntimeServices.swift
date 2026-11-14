@@ -25,6 +25,19 @@ struct CachedLyrics: Codable {
     let translated: String?
 }
 
+@MainActor
+protocol MusicXLXRuntimeServing: MusicCatalogServing {
+    func resolvePlaybackURL(song: MusicSong, quality: MusicQuality, forceRefresh: Bool) async throws -> URL
+    func artworkURL(for song: MusicSong) async throws -> URL?
+    func lyrics(for song: MusicSong) async throws -> (original: String, translated: String?)?
+    func importSource(script: String, metadata: LXSourceStore.Metadata) throws -> LXSourceStore.Entry
+    func enableSource(id: String) async throws
+    func disableSource(id: String) throws
+    func removeSource(id: String) throws
+    func installedSources() -> [LXSourceStore.Entry]
+    func sourceCapabilities(id: String) -> [String: [String]]
+}
+
 /// The app-facing implementation of the LX source runtime.
 /// JavaScript resolves source URLs; AVPlayer remains the only playback engine.
 @MainActor

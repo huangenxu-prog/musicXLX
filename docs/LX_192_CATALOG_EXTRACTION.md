@@ -95,12 +95,12 @@ This makes the extraction strategy clearer: do not bundle the five provider root
 The provider crypto imports are not generic asynchronous-only APIs. The original crypto.ts exposes synchronous AES and RSA methods used directly while constructing catalog request parameters:
 
 - aesEncryptSync(text, key, iv, mode) and aesDecryptSync(...) accept Base64-encoded text/key/IV and return the encrypted Base64 string or decrypted UTF-8 string.
-- AES modes used by the SDK are AES/CBC/PKCS7Padding and AES (the Android implementation resolves the latter through its provider); the explicit source constant is AES.
+- AES modes used by the SDK are AES/CBC/PKCS7Padding and AES. The Android implementation passes the mode string directly to Java Cipher.getInstance; on Android's default provider, the bare AES transformation resolves to ECB with PKCS5 padding (not ECB/NoPadding). The source enum calls this ECB_128_NoPadding, but that enum label does not match the actual Java provider default and must not be trusted as the runtime behavior.
 - rsaEncryptSync(text, publicKey, padding) accepts Base64 plaintext and a Base64 DER public key, returning Base64 ciphertext. NetEase uses RSA/ECB/NoPadding.
 - hashSHA1(text) is asynchronous and returns a lowercase hexadecimal SHA-1 digest; QQ's zzcSign awaits it before building the request signature.
 - NetEase imports btoa from react-native-quick-base64; MD5 is provided by the provider's toMD5 helper, which depends on react-native-quick-md5.
 
-The supplied LX source archive includes the Android implementation in android/app/src/main/java/cn/toside/music/mobile/crypto/{CryptoModule,AES,RSA}.java. These semantics are the compatibility reference; do not substitute WebCrypto defaults without matching input/output encoding, padding, and RSA behavior. The current MusicXLX JavaScriptCore bridge still has no crypto exports, so NetEase and QQ signed catalog requests cannot yet be considered runnable.
+The supplied LX source archive includes the Android implementation in android/app/src/main/java/cn/toside/music/mobile/crypto/{CryptoModule,AES,RSA}.java. AES takes Base64-encoded input/key/IV, truncates or zero-pads the IV to 16 bytes for the IV-taking overload, and emits unwrapped Base64 ciphertext; decryption emits UTF-8. The Java implementation catches cipher exceptions and returns an empty string. RSA takes Base64 plaintext and X.509 SubjectPublicKeyInfo public-key DER, then emits unwrapped Base64 ciphertext. These semantics are the compatibility reference; do not substitute WebCrypto defaults without matching input/output encoding, padding, and RSA behavior. The current MusicXLX JavaScriptCore bridge still has no crypto exports, so NetEase and QQ signed catalog requests cannot yet be considered runnable.
 
 ## Transport compatibility contract
 

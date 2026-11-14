@@ -11,11 +11,11 @@ enum MusicXLXRuntimeError: LocalizedError {
         case .runtimeNotInstalled:
             return "洛雪 JS Runtime 尚未接入，当前无法读取音源数据。"
         case .sourceStoreUnavailable(let message):
-            return "音源存储初始化失败：\\(message)"
+            return "音源存储初始化失败：\(message)"
         case .noEnabledSource(let platform):
-            return "没有已启用且注册了 \\(platform) 平台的音源脚本。"
+            return "没有已启用且注册了 \(platform) 平台的音源脚本。"
         case .malformedResult(let message):
-            return "音源返回数据格式错误：\\(message)"
+            return "音源返回数据格式错误：\(message)"
         }
     }
 }
@@ -78,7 +78,7 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
                   let registration = sourceManager.registration(for: scriptID)?.sources[platform] else { continue }
 
             let selectedQuality = Self.bestSupportedQuality(requested: quality, available: registration.qualitys)
-            let cacheKey = "lx-play-url|\\(scriptID)|\\(entry.metadata.version)|\\(platform)|\\(song.sourceID)|\\(selectedQuality)"
+            let cacheKey = "lx-play-url|\(scriptID)|\(entry.metadata.version)|\(platform)|\(song.sourceID)|\(selectedQuality)"
             if !forceRefresh, let cached: String = await MusicCache.shared.value(for: cacheKey),
                let url = URL(string: cached), Self.isHTTPURL(url) {
                 return url
@@ -206,7 +206,7 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
     }
 
     private static func bestSupportedQuality(requested: MusicQuality, available: [String]) -> String {
-        let order = MusicQuality.allCases.map(\\.rawValue)
+        let order = MusicQuality.allCases.map(\.rawValue)
         guard let requestedIndex = order.firstIndex(of: requested.rawValue) else { return available.first ?? MusicQuality.standard.rawValue }
         let supported = order.filter { available.contains($0) }
         return supported.last(where: { candidate in

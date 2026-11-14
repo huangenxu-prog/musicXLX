@@ -332,7 +332,7 @@ struct ContentView: View {
             retryCurrentSongWithFreshURL()
         }
         .fullScreenCover(item: $discoveryRoute) { route in
-            MusicDiscoveryPage(route: route, service: runtimeServices, onClose: { discoveryRoute = nil },
+            MusicDiscoveryPage(route: route, onClose: { discoveryRoute = nil },
                 onPlay: { playDiscoverySong($0) },
                 currentSong: currentSong?.onlineSong,
                 isPlaying: playerStore.isPlaying,
@@ -346,7 +346,8 @@ struct ContentView: View {
                 duration: playerStore.duration,
                 onOpenPlaylist: { discoveryRoute = .playlist($0) },
                 onOpenAlbum: { discoveryRoute = .album(title: $0, artist: $1) },
-                onSelectChart: { discoveryRoute = .chart($0) })
+                onSelectChart: { discoveryRoute = .chart($0) },
+                service: runtimeServices)
         }
         .task { await loadHomeSongs() }
     }

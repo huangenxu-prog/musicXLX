@@ -91,6 +91,7 @@ final class LXSourceManager {
             do {
                 try load(entry: entry) { result in
                     if case .failure(let error) = result {
+                        _ = try? self.store.setEnabled(false, id: entry.metadata.id)
                         NSLog("[MusicXLX:LX] restore failed (%@): %@", entry.metadata.id, error.localizedDescription)
                     }
                 }

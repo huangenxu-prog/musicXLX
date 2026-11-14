@@ -117,7 +117,8 @@
         case 'utf8': case 'utf-8': default: return utf8Decode(bytes);
       }
     }
-    slice(start, end) { return new LXBuffer(this.subarray(start, end)); }
+    // Node Buffer.slice() is an alias for subarray(): it shares the backing store.
+    slice(start, end) { return this.subarray(start, end); }
     subarray(start, end) {
       var view = super.subarray(start, end);
       return new LXBufferView(view.buffer, view.byteOffset, view.byteLength);
@@ -130,7 +131,7 @@
     constructor(buffer, byteOffset, length) { super(buffer, byteOffset, length); }
     get _isBuffer() { return true; }
     toString(encoding, start, end) { return LXBuffer.from(this).toString(encoding, start, end); }
-    slice(start, end) { return new LXBuffer(this.subarray(start, end)); }
+    slice(start, end) { return this.subarray(start, end); }
   }
 
   global.Buffer = LXBuffer;

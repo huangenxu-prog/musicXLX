@@ -87,6 +87,12 @@ static NSUInteger LXRSABitLength(NSData *pkcs1) {
   NSUInteger total = pkcs1.length, offset = 0, length = 0;
   if (total < 8 || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return 0;
   if (offset >= total || bytes[offset++] != 0x02 || !LXReadASN1Length(bytes, total, &offset, &length)) return 0;
+  if (offset + length > total) return 0;
+  // PKCS#1 private keys start with an INTEGER version before the modulus.
+  if (length == 1 && bytes[offset] == 0x00) {
+    offset += length;
+    if (offset >= total || bytes[offset++] != 0x02 || !LXReadASN1Length(bytes, total, &offset, &length)) return 0;
+  }
   if (length == 0 || offset + length > total) return 0;
   while (length > 1 && bytes[offset] == 0x00) { offset++; length--; }
   uint8_t first = bytes[offset];

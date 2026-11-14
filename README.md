@@ -12,8 +12,8 @@ MusicXLX is a standalone iOS music player. Its UI and playback experience are mi
 - Legacy GDStudio search/metadata and native URL resolver calls are not used by the migrated UI.
 - A JavaScriptCore LX runtime adapter now provides isolated per-script contexts, serialized execution, LX initialization handshake, HTTP request/cancel/response bridging, timer callbacks, and Base64/MD5/AES/RSA helpers.
 - LX preload platform registration is dynamic but constrained to validated platform IDs, supported actions, and supported quality values; community IDs such as `qs` are not hardcoded out.
-- LXSourceStore persists raw imported scripts separately from metadata and enabled state. LXSourceManager provides import, enable, disable, reload, update, remove, and provider-action routing.
-- MusicXLXRuntimeServices now routes playback URL, lyric, and artwork requests through enabled LX scripts and retains the native AVPlayer as the only playback owner. Playback URL cache keys include script ID/version, platform, song ID, and quality.
+- LXSourceStore persists raw imported scripts separately from metadata and enabled state. LXSourceManager provides import, enable, disable, reload, update, remove, and provider-action routing. A source-management sheet in the Music Library imports `.js` files, reads the LX metadata header, and lets users enable, disable, or remove scripts.
+- MusicXLXRuntimeServices now routes playback URL, lyric, and artwork requests through enabled LX scripts and retains the native AVPlayer as the only playback owner. Playback URL cache keys include script ID/version, platform, song ID, and quality. Provider-declared quality identifiers are preserved, including extensions such as `hires` and `master`.
 - Search, playlist, and chart retrieval remain pending: the standard LX source contract provides `musicUrl`, `lyric`, and `pic`, not catalog search APIs.
 
 ## Architecture boundary

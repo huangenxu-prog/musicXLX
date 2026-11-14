@@ -586,7 +586,7 @@ struct ContentView: View {
     }
 
     private func editorialPlaylistCard(title: String, subtitle: String, width: CGFloat) -> some View {
-        Button { discoveryRoute = .playlist(title) } label: {
+        Button { discoveryRoute = .playlistSearch(title) } label: {
             ZStack(alignment: .bottomLeading) {
                 HomeArtwork(name: title == "午后放松" ? "playlist_relax" : title == "深夜独白" ? "playlist_night" : "playlist_drive")
                     .frame(width: width, height: 76).clipped()

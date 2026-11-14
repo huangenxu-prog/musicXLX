@@ -179,13 +179,24 @@ export const updateNowPlayingTitles = async(titles: NowPlayingTitles) => {
   // The pinned TrackPlayer iOS bridge does not export updateNowPlayingTitles.
   // Use its supported metadata API on iOS; retain the upstream method on Android.
   if (Platform.OS === 'ios') {
+    // iOS Now Playing metadata has no lyrics field in the pinned native player.
+    // Ignore lyric-only updates rather than clearing the current track metadata.
+    if (titles.title === undefined && titles.artist === undefined && titles.album === undefined) return
     const currentTrack = await TrackPlayer.getCurrentTrack()
     // The native iOS bridge resolves NSNull when the queue has no current track.
     if (currentTrack == null || currentTrack < 0) return
+    const track = await TrackPlayer.getTrack(currentTrack)
+    if (!track) return
     return TrackPlayer.updateMetadataForTrack(currentTrack, {
-      title: titles.title,
-      artist: titles.artist,
-      album: titles.album,
+      title: titles.title ?? track.title,
+      artist: titles.artist ?? track.artist,
+      album: titles.album ?? track.album,
+      artwork: track.artwork,
+      duration: track.duration,
+      description: track.description,
+      date: track.date,
+      genre: track.genre,
+      isLiveStream: track.isLiveStream,
     })
   }
   return TrackPlayer.updateNowPlayingTitles(titles)

@@ -46,6 +46,9 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
   const isShowNotificationImage = settingState.setting['player.isShowNotificationImage']
   const album = mInfo.album || undefined
   const artwork = isShowNotificationImage && mInfo.pic && httpRxp.test(mInfo.pic) ? mInfo.pic : undefined
+  const requestOptions = Platform.OS === 'ios'
+    ? { headers: { 'User-Agent': defaultUserAgent } }
+    : { userAgent: defaultUserAgent }
   const lyric = getCurrentFullLyric(mInfo.id)
   if (url) {
     track.push({
@@ -55,7 +58,7 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
       artist: mInfo.singer || 'Unknow',
       album,
       artwork,
-      userAgent: defaultUserAgent,
+      ...requestOptions,
       musicId: mInfo.id,
       lyric,
       // original: { ...musicInfo },

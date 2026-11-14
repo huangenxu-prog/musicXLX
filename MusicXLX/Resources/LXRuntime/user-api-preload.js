@@ -13,6 +13,8 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     '__lx_native_call__set_timeout',
     '__lx_native_call__utils_str2b64',
     '__lx_native_call__utils_b642buf',
+    '__lx_native_call__utils_buf2b64',
+    '__lx_native_call__utils_random_bytes',
     '__lx_native_call__utils_str2md5',
     '__lx_native_call__utils_aes_encrypt',
     '__lx_native_call__utils_rsa_encrypt',
@@ -75,22 +77,12 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
   }
 
   function bytesToString(bytes) {
-    let result = ''
-    let i = 0
-    while (i < bytes.length) {
-      const byte = bytes[i]
-      if (byte < 128) {
-        result += String.fromCharCode(byte)
-        i++
-      } else if (byte >= 192 && byte < 224) {
-        result += String.fromCharCode(((byte & 31) << 6) | (bytes[i + 1] & 63))
-        i += 2
-      } else {
-        result += String.fromCharCode(((byte & 15) << 12) | ((bytes[i + 1] & 63) << 6) | (bytes[i + 2] & 63))
-        i += 3
-      }
+    const encoded = Array.from(bytes, byte => '%' + Number(byte).toString(16).padStart(2, '0')).join('')
+    try {
+      return decodeURIComponent(encoded)
+    } catch (_) {
+      return Array.from(bytes, byte => String.fromCharCode(byte)).join('')
     }
-    return result
   }
   function stringToBytes(inputString) {
     const bytes = []
@@ -286,7 +278,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
 
   const dataToB64 = (data) => {
     if (typeof data === 'string') return nativeFuncs.utils_str2b64(data)
-    else if (Array.isArray(data) || ArrayBuffer.isView(data)) return utils.buffer.bufToString(data, 'base64')
+    else if (Array.isArray(data) || ArrayBuffer.isView(data)) return nativeFuncs.utils_buf2b64(JSON.stringify(Array.from(data)))
     throw new Error('data type error: ' + typeof data + ' raw data: ' + data)
   }
   const utils = {
@@ -308,11 +300,8 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
         return utils.buffer.from(nativeFuncs.utils_rsa_encrypt(dataToB64(buffer), key, RSA_PADDING.NoPadding), 'base64')
       },
       randomBytes(size) {
-        const byteArray = new Uint8Array(size)
-        for (let i = 0; i < size; i++) {
-          byteArray[i] = Math.floor(Math.random() * 256)
-        }
-        return byteArray
+        const safeSize = Math.min(Math.max(0, Math.floor(size)), 65536)
+        return new Uint8Array(JSON.parse(nativeFuncs.utils_random_bytes(safeSize)))
       },
       md5(str) {
         if (typeof str !== 'string') throw new Error('param required a string')
@@ -348,7 +337,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
             case 'hex':
               return new Uint8Array(buf).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '')
             case 'base64':
-              return nativeFuncs.utils_str2b64(bytesToString(Array.from(buf)))
+              return nativeFuncs.utils_buf2b64(JSON.stringify(Array.from(buf)))
             case 'utf8':
             case 'utf-8':
             default:

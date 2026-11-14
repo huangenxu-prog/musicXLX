@@ -116,7 +116,7 @@ Status: source and bridge wiring are committed, but no Xcode compile or cryptogr
 
 ### Buffer call-site audit against the supplied v1.9.2 source
 
-The selected provider source uses the following concrete Buffer operations: `from`, `alloc`, `concat`, `isBuffer`, `slice`, `subarray`, `toString` (`utf8`, `base64`, `hex`), `reverse`, `indexOf`, and indexed byte mutation. `reverse`, `indexOf`, and indexed mutation are inherited from `Uint8Array`; `subarray` must share the original backing storage because Kuwo's lyric decoder mutates bytes returned by `subarray`. The shim was corrected to preserve that view semantics and to keep the Base64 decoder's accumulator bounded across long inputs. This is a source-level correction only; it has not yet been run against the full provider corpus or on iOS JavaScriptCore.
+The selected provider source uses the following concrete Buffer operations: `from`, `alloc`, `concat`, `isBuffer`, `slice`, `subarray`, `toString` (`utf8`, `base64`, `hex`), `reverse`, `indexOf`, and indexed byte mutation. `reverse`, `indexOf`, and indexed mutation are inherited from `Uint8Array`; `subarray` must share the original backing storage because Kuwo's lyric decoder mutates bytes returned by `subarray`. The shim preserves the view semantics of both `subarray()` and Node `Buffer.slice()` (both share the backing store), while `Buffer.from(existingBuffer)` remains a copy. The Base64 decoder also keeps its accumulator bounded across long inputs. A Node regression test file now covers these semantics and common encodings, but it has been added—not executed—so this remains an unverified source-level correction until the test is run against the checked-out repository and the full provider corpus.
 
 ## Buffer compatibility scope
 

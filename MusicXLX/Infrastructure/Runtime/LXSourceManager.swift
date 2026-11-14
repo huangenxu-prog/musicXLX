@@ -30,7 +30,10 @@ final class LXSourceManager {
 
     @discardableResult
     func importSource(script: String, metadata: LXSourceStore.Metadata) throws -> LXSourceStore.Entry {
-        try store.importScript(script, metadata: metadata, enabled: false)
+        // Re-importing the same script ID replaces the old runtime as well as its stored bytes.
+        runtimes.removeValue(forKey: metadata.id)?.destroy()
+        registrations.removeValue(forKey: metadata.id)
+        return try store.importScript(script, metadata: metadata, enabled: false)
     }
 
     func enableSource(id: String, completion: @escaping (Result<LXJavaScriptRuntime.RegisteredSource, Error>) -> Void) {

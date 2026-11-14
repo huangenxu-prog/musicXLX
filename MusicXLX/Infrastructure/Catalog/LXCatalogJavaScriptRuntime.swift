@@ -23,6 +23,7 @@ final class LXCatalogJavaScriptRuntime {
     private let transport: LXCatalogHTTPTransport
     private var context: JSContext?
     private var activeTasks: [String: Task<Void, Never>] = [:]
+    private var pendingCalls: [String: (Result<Any?, Error>) -> Void] = [:]
     private var isInvalidated = false
 
     init(transport: LXCatalogHTTPTransport = LXCatalogHTTPTransport()) {
@@ -61,6 +62,21 @@ final class LXCatalogJavaScriptRuntime {
                 }
             }
             context.setObject(nativeCancel, forKeyedSubscript: "__lx_catalog_native_cancel" as NSString)
+            let nativeComplete: @convention(block) (String, String, String) -> Void = { [weak self] callID, resultJSON, errorMessage in
+                guard let self else { return }
+                self.queue.async {
+                    guard let completion = self.pendingCalls.removeValue(forKey: callID) else { return }
+                    if !errorMessage.isEmpty {
+                        completion(.failure(RuntimeError.script(errorMessage)))
+                    } else if let data = resultJSON.data(using: .utf8),
+                              let object = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) {
+                        completion(.success(object))
+                    } else {
+                        completion(.success(nil))
+                    }
+                }
+            }
+            context.setObject(nativeComplete, forKeyedSubscript: "__lx_catalog_native_complete" as NSString)
 
             context.evaluateScript(Self.compatibilityBootstrap)
             if let exception = context.exception {
@@ -77,23 +93,26 @@ final class LXCatalogJavaScriptRuntime {
         }
     }
 
+    /// Calls an async LX catalog export and resolves its Promise before returning.
     func call(export name: String, arguments: [Any], completion: @escaping (Result<Any?, Error>) -> Void) {
         queue.async {
             guard !self.isInvalidated, let context = self.context else {
                 completion(.failure(RuntimeError.script("目录运行时尚未加载。")))
                 return
             }
-            guard let function = context.objectForKeyedSubscript("LXCatalog")?.objectForKeyedSubscript(name),
-                  function.isObject, function.hasProperty("call") else {
-                completion(.failure(RuntimeError.script("目录模块未导出函数：\(name)")))
+            guard JSONSerialization.isValidJSONObject(arguments),
+                  let data = try? JSONSerialization.data(withJSONObject: arguments),
+                  let argumentsJSON = String(data: data, encoding: .utf8) else {
+                completion(.failure(RuntimeError.invalidOptions))
                 return
             }
-            let result = function.call(withArguments: arguments)
+            let callID = UUID().uuidString
+            self.pendingCalls[callID] = completion
+            let invoke = context.objectForKeyedSubscript("__lxCatalogInvoke")
+            _ = invoke?.call(withArguments: [name, argumentsJSON, callID])
             if let exception = context.exception {
                 context.exception = nil
-                completion(.failure(RuntimeError.script(exception.toString())))
-            } else {
-                completion(.success(result?.toObject()))
+                self.pendingCalls.removeValue(forKey: callID)?(.failure(RuntimeError.script(exception.toString())))
             }
         }
     }
@@ -174,9 +193,13 @@ final class LXCatalogJavaScriptRuntime {
         isInvalidated = true
         activeTasks.values.forEach { $0.cancel() }
         activeTasks.removeAll()
+        let callbacks = Array(pendingCalls.values)
+        pendingCalls.removeAll()
+        callbacks.forEach { $0(.failure(RuntimeError.script("目录运行时已关闭。"))) }
         context?.exceptionHandler = nil
         context?.setObject(nil, forKeyedSubscript: "__lx_catalog_native_fetch" as NSString)
         context?.setObject(nil, forKeyedSubscript: "__lx_catalog_native_cancel" as NSString)
+        context?.setObject(nil, forKeyedSubscript: "__lx_catalog_native_complete" as NSString)
         context = nil
     }
 
@@ -194,6 +217,30 @@ final class LXCatalogJavaScriptRuntime {
           return;
         }
         item.resolve(response);
+      };
+
+      global.__lxCatalogInvoke = function (name, argsJSON, callID) {
+        var api = global.LXCatalog;
+        if (!api || typeof api[name] !== 'function') {
+          global.__lx_catalog_native_complete(callID, '', 'LX catalog export not found: ' + name);
+          return;
+        }
+        var args;
+        try { args = JSON.parse(argsJSON); }
+        catch (error) {
+          global.__lx_catalog_native_complete(callID, '', String(error));
+          return;
+        }
+        Promise.resolve().then(function () {
+          return api[name].apply(api, args);
+        }).then(function (result) {
+          var json;
+          try { json = JSON.stringify(result === undefined ? null : result); }
+          catch (error) { throw new Error('Catalog result is not JSON serializable: ' + error); }
+          global.__lx_catalog_native_complete(callID, json, '');
+        }).catch(function (error) {
+          global.__lx_catalog_native_complete(callID, '', error && error.message ? error.message : String(error));
+        });
       };
 
       global.__lxCatalogHTTPFetch = function (url, options) {

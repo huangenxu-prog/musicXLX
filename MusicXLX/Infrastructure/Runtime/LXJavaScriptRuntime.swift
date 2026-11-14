@@ -150,10 +150,13 @@ final class LXJavaScriptRuntime {
         timerWorkItems.removeAll()
         initTimeoutWorkItem?.cancel()
         initTimeoutWorkItem = nil
+        pendingInitCompletion?(.failure(RuntimeError.javascript("音源运行时已关闭。")))
         pendingInitCompletion = nil
         actionTimeouts.values.forEach { $0.cancel() }
         actionTimeouts.removeAll()
+        let pendingCallbacks = pendingActionCompletions.values
         pendingActionCompletions.removeAll()
+        pendingCallbacks.forEach { $0(.failure(RuntimeError.javascript("音源运行时已关闭。"))) }
         context?.exceptionHandler = nil
         context?.setObject(nil, forKeyedSubscript: "__lx_native_call__" as NSString)
         context = nil

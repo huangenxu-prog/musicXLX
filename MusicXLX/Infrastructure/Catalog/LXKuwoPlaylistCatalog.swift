@@ -75,7 +75,6 @@ struct LXKuwoPlaylistCatalog {
         let digest = String(parts[0].dropFirst("digest-".count))
         var playlistID = parts[1]
         let rows: [[String: Any]]
-        if digest == "5" { playlistID = try await resolveDigest5PlaylistID(playlistID) }
         if digest == "13" {
             var components = URLComponents(string: "https://search.kuwo.cn/r.s")!
             components.queryItems = [
@@ -93,7 +92,10 @@ struct LXKuwoPlaylistCatalog {
                 throw CatalogError.invalidResponse
             }
             rows = albumRows
-        } else if digest == "8" || digest == "5" {
+        } else {
+            // LX 1.9.2 routes digest 8 directly; every other non-album
+            // digest follows its digest-5 source-ID resolution path.
+            if digest != "8" { playlistID = try await resolveDigest5PlaylistID(playlistID) }
             var components = URLComponents(string: "https://nplserver.kuwo.cn/pl.svc")!
             components.queryItems = [
                 URLQueryItem(name: "op", value: "getlistinfo"),
@@ -185,6 +187,12 @@ struct LXKuwoPlaylistCatalog {
     }
 
     private static func decode(_ value: String) -> String {
-        value.removingPercentEncoding ?? value
+        let decoded = value.removingPercentEncoding ?? value
+        return decoded
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&quot;", with: String(UnicodeScalar(34)!))
+            .replacingOccurrences(of: "&#39;", with: "'")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
     }
 }

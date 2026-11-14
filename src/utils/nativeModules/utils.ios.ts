@@ -1,6 +1,6 @@
-import { AppState, Dimensions, Platform, Share } from 'react-native'
+import { AppState, Dimensions, NativeModules, Share } from 'react-native'
 
-let isScreenKeepAwake = false
+const screenControl = NativeModules.LXScreenControlModule
 
 // iOS does not allow applications to terminate themselves programmatically.
 export const exitApp = () => {}
@@ -10,10 +10,10 @@ export const installApk = async(_filePath: string, _fileProviderAuthority: strin
 }
 
 export const screenkeepAwake = () => {
-  isScreenKeepAwake = true
+  screenControl?.setIdleTimerDisabled?.(true)
 }
 export const screenUnkeepAwake = () => {
-  isScreenKeepAwake = false
+  screenControl?.setIdleTimerDisabled?.(false)
 }
 
 export const getWIFIIPV4Address = async(): Promise<string> => ''

@@ -82,7 +82,7 @@ static NSData *LXRSAPublicKeyFromX509(NSData *x509) {
   return [NSData dataWithBytes:bytes + offset length:length - 1];
 }
 
-static NSString *LXRSANoPaddingEncrypt(NSString *data, NSString *publicKeyBase64) {
+static NSString *LXRSANoPaddingEncrypt(NSString *data, NSString *publicKeyBase64, NSString *padding) {
   NSData *rawKey = LXRSAPublicKeyFromX509(LXBase64Data(publicKeyBase64));
   if (rawKey == nil) return @"";
   NSDictionary *attributes = @{
@@ -96,8 +96,16 @@ static NSString *LXRSANoPaddingEncrypt(NSString *data, NSString *publicKeyBase64
     return @"";
   }
   NSData *input = LXBase64Data(data);
+  SecKeyAlgorithm algorithm = [padding isEqualToString:@"RSA/ECB/OAEPWithSHA1AndMGF1Padding"]
+    ? kSecKeyAlgorithmRSAEncryptionOAEPSHA1
+    : kSecKeyAlgorithmRSAEncryptionRaw;
+  if (!SecKeyIsAlgorithmSupported(publicKey, kSecKeyOperationTypeEncrypt, algorithm)) {
+    CFRelease(publicKey);
+    if (keyError) CFRelease(keyError);
+    return @"";
+  }
   CFErrorRef encryptError = NULL;
-  CFDataRef encrypted = SecKeyCreateEncryptedData(publicKey, kSecKeyAlgorithmRSAEncryptionRaw, (__bridge CFDataRef)input, &encryptError);
+  CFDataRef encrypted = SecKeyCreateEncryptedData(publicKey, algorithm, (__bridge CFDataRef)input, &encryptError);
   CFRelease(publicKey);
   if (keyError) CFRelease(keyError);
   if (encrypted == NULL) {
@@ -209,8 +217,7 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
     return LXAES(data ?: @"", key ?: @"", iv ?: @"", mode ?: @"");
   };
   context[@"__lx_native_call__utils_rsa_encrypt"] = ^NSString *(NSString *data, NSString *key, NSString *padding) {
-    if ([padding isEqualToString:@"RSA/ECB/NoPadding"]) return LXRSANoPaddingEncrypt(data ?: @"", key ?: @"");
-    return @"";
+    return LXRSANoPaddingEncrypt(data ?: @"", key ?: @"", padding ?: @"");
   };
   context[@"__lx_native_call__set_timeout"] = ^(NSNumber *identifier, NSNumber *delay) {
     NSTimeInterval interval = MAX(0, delay.doubleValue) / 1000.0;

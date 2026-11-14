@@ -763,7 +763,7 @@ struct ContentView: View {
                 }
                 Spacer()
                 Button { isSourceManagerPresented = true } label: {
-                    Image(systemName: "waveform.badge.plus")
+                    Image(systemName: "waveform")
                         .font(.system(size: 19, weight: .medium))
                         .foregroundStyle(.white.opacity(0.9))
                         .frame(width: 44, height: 44)

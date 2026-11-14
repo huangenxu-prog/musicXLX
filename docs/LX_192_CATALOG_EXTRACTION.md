@@ -70,6 +70,33 @@ The source modules are not standalone JavaScript files. Their dependency closure
 - `src/utils/request.js`
 - `src/utils/musicSdk/api-source.js`
 
+## Dependency-closure findings from the supplied source archive
+
+A static local-import traversal starting at the five provider `index.js` files found 68 local source files in the default provider dependency graph. This count excludes separate album modules that are not imported by the default provider roots (Kugou and Migu album files), and excludes legacy/temp modules.
+
+The closure reaches these non-relative dependencies:
+
+- `@/store/setting/state`: pulled in through `musicSdk/api-source.js`. Catalog calls should import the individual catalog modules directly rather than provider root indexes where possible; the root index also wires playback API settings, which catalog-only execution does not need.
+- `@/utils/nativeModules/crypto`: used by provider crypto helpers. A JavaScriptCore-compatible implementation/bridge is required.
+- `@/utils/request`: used by QQ crypto helper; must be mapped to the catalog transport adapter.
+- `@/utils/simplify-chinese-main`: reached from shared string decoding.
+- `buffer`: used by Kugou utility code.
+- `he`: used by shared string decoding.
+- `pako`: deflate/inflate support used by request/signature helpers.
+- `react-native-background-timer`: used by the original request and Kuwo helper layers.
+- `react-native-quick-base64` and `react-native-quick-md5`: native base64/MD5 dependencies.
+- `needle` and `request-progress`: imported in the request file but not needed by the active fetch-based catalog path; verify they remain unused in the selected runtime path.
+  
+This makes the extraction strategy clearer: do not bundle the five provider root indexes wholesale. Bundle the original catalog submodules (search, leaderboard, playlist, and the explicitly needed album/detail modules), their local data-normalization dependencies, and supply narrow runtime shims for request, crypto, Buffer, pako, MD5/base64, and string decoding.
+
+## Transport compatibility contract
+
+The original `httpFetch(url, options)` returns an object with:
+- `promise`: resolves to a response object containing `headers`, `body`, `statusCode`, `statusMessage`, `url`, and `ok`.
+- `cancelHttp()`: aborts the underlying request.
+
+Request behavior includes GET/POST/HEAD, URL-encoded `form`, JSON bodies, custom headers, timeouts, optional binary response, and response parsing that attempts JSON but preserves non-JSON text. The adapter must preserve these semantics for each original module. A JSON-only request wrapper is insufficient.
+
 ## Integration rules
 
 1. Preserve LX provider IDs: `wy`, `tx`, `kw`, `kg`, `mg`.

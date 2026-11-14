@@ -1,7 +1,24 @@
 #import "AppDelegate.h"
 #import <ReactNativeNavigation/ReactNativeNavigation.h>
-
 #import <React/RCTBundleURLProvider.h>
+#import <React/RCTBridgeModule.h>
+#import <UIKit/UIKit.h>
+
+@interface LXScreenControlModule : NSObject <RCTBridgeModule>
+@end
+
+@implementation LXScreenControlModule
+
+RCT_EXPORT_MODULE(LXScreenControlModule)
+
+RCT_EXPORT_METHOD(setIdleTimerDisabled:(BOOL)disabled)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [UIApplication sharedApplication].idleTimerDisabled = disabled;
+  });
+}
+
+@end
 
 @implementation AppDelegate
 
@@ -9,10 +26,7 @@
 {
   RCTBridge *bridge = [[RCTBridge alloc] initWithDelegate:self launchOptions:launchOptions];
   [ReactNativeNavigation bootstrapWithBridge:bridge];
-  // You can add your custom initial props in the dictionary below.
-  // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
-
   return YES;
 }
 

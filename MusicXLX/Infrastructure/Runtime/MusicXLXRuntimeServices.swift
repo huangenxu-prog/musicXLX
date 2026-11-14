@@ -166,6 +166,13 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
         try sourceManager.disableSource(id: id)
     }
 
+    func removeSource(id: String) throws {
+        guard let sourceManager else {
+            throw MusicXLXRuntimeError.sourceStoreUnavailable(storeError ?? "未知错误")
+        }
+        try sourceManager.removeSource(id: id)
+    }
+
     func installedSources() -> [LXSourceStore.Entry] {
         sourceManager?.sources() ?? []
     }

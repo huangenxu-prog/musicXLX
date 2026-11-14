@@ -576,10 +576,8 @@ RCT_REMAP_METHOD(pickFile,
   NSString *destinationPath = nil;
 
   if (self.targetPath.length > 0) {
-    NSString *extension = sourceURL.pathExtension;
-    destinationPath = extension.length > 0
-      ? [self.targetPath stringByAppendingPathExtension:extension]
-      : self.targetPath;
+    [[NSFileManager defaultManager] createDirectoryAtPath:self.targetPath withIntermediateDirectories:YES attributes:nil error:&error];
+    if (error == nil) destinationPath = [self.targetPath stringByAppendingPathComponent:sourceURL.lastPathComponent];
   } else {
     NSString *directory = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
     NSString *importsDirectory = [directory stringByAppendingPathComponent:@"Imports"];

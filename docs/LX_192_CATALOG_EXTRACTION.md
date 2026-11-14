@@ -110,6 +110,22 @@ It provides:
 
 This is a native transport foundation only. It does not yet expose LX's JavaScript `httpFetch(url, options) -> { promise, cancelHttp }` shape to JavaScriptCore, and no original provider module has been bundled or invoked yet. The next integration step is the JSCore async callback bridge, then loading the original catalog modules against this transport.
 
+## JavaScriptCore asynchronous bridge foundation
+
+Added `MusicXLX/Infrastructure/Catalog/LXCatalogJavaScriptRuntime.swift`.
+
+- Keeps each JavaScriptCore context on a dedicated serial queue.
+- Exposes a native async HTTP function to JavaScript and resumes Promise callbacks on the JS queue.
+- Exposes cancellation for individual requests.
+- Adds a Promise-aware export invocation mechanism so async provider methods can return resolved JSON results to Swift.
+- Exposes the original request helper name `httpFetch` as an alias for the transport shim, with the same outer shape `{ promise, cancelHttp }`.
+
+Important current limitations:
+- The actual LX provider source modules are not bundled into the app yet.
+- This first shim does not yet implement the full original `request.js` preprocessing behavior (including its `bHh` request-header transformation, multipart formData, and binary Blob-to-Buffer conversion).
+- Crypto/native modules, Buffer, pako, React Native timer APIs, and the shared LX utility aliases are not yet fully adapted.
+- Therefore the runtime foundation is not yet sufficient to claim any LX catalog provider is runnable. The next work is to close these compatibility gaps and produce a reproducible bundle from the supplied 1.9.2 source.
+
 ## Integration rules
 
 1. Preserve LX provider IDs: `wy`, `tx`, `kw`, `kg`, `mg`.

@@ -75,7 +75,7 @@ const registerPlaybackService = async() => {
 
   TrackPlayer.addEventListener(TPEvent.RemoteSeek, async({ position }) => {
     // The pinned iOS native bridge emits RemoteSeek but does not seek AVPlayer itself.
-    if (Platform.OS === 'ios') await TrackPlayer.seekTo(position)
+    if (Platform.OS === 'ios') await TrackPlayer.seekTo(position as number)
     global.app_event.setProgress(position as number)
   })
 

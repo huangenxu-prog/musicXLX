@@ -250,6 +250,7 @@ struct ContentView: View {
     @State private var homeLoadError: String?
     @State private var discoveryRoute: MusicDiscoveryRoute?
     @State private var isSettingsAlertPresented = false
+    @State private var isSourceManagerPresented = false
 
     private var filteredSongs: [AppSong] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -305,6 +306,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(.dark)
         .fullScreenCover(isPresented: $isPlayerPresented) { nowPlayingPage }
+        .sheet(isPresented: $isSourceManagerPresented) { LXSourceManagerView() }
         .confirmationDialog("播放设置", isPresented: $isSettingsAlertPresented, titleVisibility: .visible) {
             Button("标准音质 · 128 kbps") { playbackQualityRaw = MusicQuality.standard.rawValue }
             Button("高音质 · 320 kbps") { playbackQualityRaw = MusicQuality.high.rawValue }
@@ -760,14 +762,24 @@ struct ContentView: View {
                         .foregroundStyle(MusicXTheme.muted)
                 }
                 Spacer()
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .frame(width: 44, height: 44)
-                    .background(.white.opacity(0.07), in: Circle())
-                    .overlay(Circle().stroke(.white.opacity(0.12), lineWidth: 1))
-                    .contentShape(Circle())
-                    .onTapGesture { selectedTab = .search; searchFieldFocused = true }
+                Button { isSourceManagerPresented = true } label: {
+                    Image(systemName: "waveform.badge.plus")
+                        .font(.system(size: 19, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.07), in: Circle())
+                        .overlay(Circle().stroke(.white.opacity(0.12), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                Button { selectedTab = .search; searchFieldFocused = true } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.07), in: Circle())
+                        .overlay(Circle().stroke(.white.opacity(0.12), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
             }
 
             HStack(spacing: 8) {

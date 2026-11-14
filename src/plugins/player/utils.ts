@@ -179,12 +179,13 @@ export const updateNowPlayingTitles = async(titles: NowPlayingTitles) => {
   // The pinned TrackPlayer iOS bridge does not export updateNowPlayingTitles.
   // Use its supported metadata API on iOS; retain the upstream method on Android.
   if (Platform.OS === 'ios') {
-    const state = await TrackPlayer.getState()
-    return TrackPlayer.updateNowPlayingMetadata({
+    const currentTrack = await TrackPlayer.getCurrentTrack()
+    if (currentTrack < 0) return
+    return TrackPlayer.updateMetadataForTrack(currentTrack, {
       title: titles.title,
       artist: titles.artist,
       album: titles.album,
-    }, state === State.Playing)
+    })
   }
   return TrackPlayer.updateNowPlayingTitles(titles)
 }

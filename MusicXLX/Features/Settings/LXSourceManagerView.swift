@@ -140,9 +140,11 @@ struct LXSourceManagerView: View {
         }
     }
 
-    private func importFile(_ result: Result<URL, Error>) {
+    private func importFile(_ result: Result<[URL], Error>) {
         do {
-            let url = try result.get()
+            guard let url = try result.get().first else {
+                throw NSError(domain: "LXSourceImport", code: 2, userInfo: [NSLocalizedDescriptionKey: "没有选择文件。"])
+            }
             let hasAccess = url.startAccessingSecurityScopedResource()
             defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
             let data = try Data(contentsOf: url)

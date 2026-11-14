@@ -1,4 +1,5 @@
 import { httpGet } from '@/utils/request'
+import { Platform } from 'react-native'
 import { author, name } from '../../package.json'
 import { downloadFile, stopDownload, temporaryDirectoryPath } from '@/utils/fs'
 import { getSupportedAbis, installApk } from '@/utils/nativeModules/utils'
@@ -85,6 +86,7 @@ const noop = (total, download) => {}
 let apkSavePath
 
 export const downloadNewVersion = async(version, onDownload = noop) => {
+  if (Platform.OS !== 'android') throw new Error('In-app APK updates are Android-only')
   const abi = await getTargetAbi()
   const url = `https://github.com/${author.name}/${name}/releases/download/v${version}/${name}-v${version}-${abi}.apk`
   let savePath = temporaryDirectoryPath + '/lx-music-mobile.apk'
@@ -118,6 +120,7 @@ export const downloadNewVersion = async(version, onDownload = noop) => {
 }
 
 export const updateApp = async() => {
+  if (Platform.OS !== 'android') throw new Error('APK installation is Android-only')
   if (!apkSavePath) throw new Error('apk Save Path is null')
   await installApk(apkSavePath, APP_PROVIDER_NAME)
 }

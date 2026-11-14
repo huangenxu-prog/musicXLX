@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F2E3D4C5B6A708192A3B4C5D /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E2F3A4B5C6D708192A3B4C5D /* Security.framework */; };
+		F3E4D5C6B7A8091A2B3C4D5E /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3F4A5B6C7D8091A2B3C4D5E /* UserNotifications.framework */; };
 		F1E2D3C4B5A60718293A4B5C /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ED297162215061F000B7C4FE /* JavaScriptCore.framework */; };
 		D1E2F3A4B5C60718293A4B5C /* user-api-preload.js in Resources */ = {isa = PBXBuildFile; fileRef = E1F2A3B4C5D60718293A4B5C /* user-api-preload.js */; };
 		00E356F31AD99517003FC87E /* LxMusicMobileTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* LxMusicMobileTests.m */; };
@@ -49,6 +51,8 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		B1C2D3E4F5A60718293A4B5C /* SwiftSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftSupport.swift; sourceTree = "<group>"; };
 		E1F2A3B4C5D60718293A4B5C /* user-api-preload.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "user-api-preload.js"; sourceTree = "<group>"; };
+		E2F3A4B5C6D708192A3B4C5D /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		E3F4A5B6C7D8091A2B3C4D5E /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +70,8 @@
 			files = (
 				0C80B921A6F3F58F76C31292 /* libPods-LxMusicMobile.a in Frameworks */,
 				F1E2D3C4B5A60718293A4B5C /* JavaScriptCore.framework in Frameworks */,
+				F2E3D4C5B6A708192A3B4C5D /* Security.framework in Frameworks */,
+				F3E4D5C6B7A8091A2B3C4D5E /* UserNotifications.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -108,6 +114,8 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
+				E2F3A4B5C6D708192A3B4C5D /* Security.framework */,
+				E3F4A5B6C7D8091A2B3C4D5E /* UserNotifications.framework */,
 				5DCACB8F33CDC322A6C60F78 /* libPods-LxMusicMobile.a */,
 				19F6CBCC0A4E27FBF8BF4A61 /* libPods-LxMusicMobile-LxMusicMobileTests.a */,
 			);

@@ -1,6 +1,8 @@
 import { AppState, Dimensions, NativeModules, Share } from 'react-native'
 
 const screenControl = NativeModules.LXScreenControlModule
+const deviceInfo = NativeModules.LXDeviceInfoModule
+const notificationModule = NativeModules.LXNotificationModule
 
 // iOS does not allow applications to terminate themselves programmatically.
 export const exitApp = () => {}
@@ -16,13 +18,19 @@ export const screenUnkeepAwake = () => {
   screenControl?.setIdleTimerDisabled?.(false)
 }
 
-export const getWIFIIPV4Address = async(): Promise<string> => ''
-export const getDeviceName = async(): Promise<string> => 'iOS Device'
+export const getWIFIIPV4Address = async(): Promise<string> => {
+  return deviceInfo?.getWIFIIPV4Address ? deviceInfo.getWIFIIPV4Address() : ''
+}
+export const getDeviceName = async(): Promise<string> => {
+  return deviceInfo?.getDeviceName ? deviceInfo.getDeviceName() : 'iOS Device'
+}
 
-// Notification authorization and battery-optimization controls require their
-// own iOS integrations. Do not report Android permission state on iOS.
-export const isNotificationsEnabled = async(): Promise<boolean> => false
-export const requestNotificationPermission = async(): Promise<boolean> => false
+export const isNotificationsEnabled = async(): Promise<boolean> => {
+  return notificationModule?.isNotificationsEnabled ? notificationModule.isNotificationsEnabled() : false
+}
+export const requestNotificationPermission = async(): Promise<boolean> => {
+  return notificationModule?.requestNotificationPermission ? notificationModule.requestNotificationPermission() : false
+}
 
 export const shareText = async(_shareTitle: string, title: string, text: string): Promise<void> => {
   await Share.share({ title, message: text })

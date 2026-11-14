@@ -9,6 +9,9 @@ on:
       - "src/**"
       - "package.json"
       - "package-lock.json"
+      - "react-native.config.js"
+      - "babel.config.js"
+      - "tsconfig.json"
       - ".github/workflows/ios-build.yml"
   pull_request:
     branches:

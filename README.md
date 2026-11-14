@@ -1,21 +1,24 @@
 # MusicXLX
 
-MusicXLX is an independent iOS player built around one strict responsibility boundary:
+MusicXLX is a standalone iOS music player. Its UI and playback experience are migrated from the finalized MusicX design, while music-source parsing is being rebuilt around a generic LX JavaScript runtime.
 
-- **LX Music 1.9.2 core**: load and execute source scripts, perform source resolution, and produce the resolved playback result.
-- **MusicXLX iOS layer**: provide the compatible runtime boundary, receive the resolved result, and play it with native AVPlayer.
+## Current migration state
 
-MusicXLX does not reimplement source-provider parsing logic and does not reuse the old MusicX project.
+- Finalized MusicX home UI and discovery UI have been migrated.
+- Original PlayerStore is the single native AVPlayer owner.
+- Original disk cache and catalog snapshot stores are retained.
+- Search, chart, playlist, metadata, and playback calls now target MusicXLXRuntimeServices.
+- Legacy GDStudio search/metadata and native URL resolver calls are not used by the migrated UI.
+- The LX JavaScriptCore runtime adapter and source-management UI are still pending.
 
-## Current stage
+## Architecture boundary
 
-- [x] Create an isolated iOS project scaffold.
-- [x] Add an AVPlayer foundation for HTTP(S) audio URLs.
-- [ ] Implement the LX custom-source JavaScript runtime compatibility layer.
-- [ ] Integrate the required LX 1.9.2 core modules.
-- [ ] Pass resolved playback URLs and metadata to AVPlayer.
-- [ ] Verify the complete import → execute → resolve → play chain.
+- SwiftUI owns presentation and interaction.
+- MusicXLXRuntimeServices is the UI-facing contract for catalog, metadata, lyrics, and playback URL resolution.
+- LX JavaScript source scripts resolve provider resources; they do not control AVPlayer.
+- PlayerStore owns native playback, lock-screen controls, audio-session lifecycle, and playback diagnostics.
+- MusicCache and MusicCatalogStore own reusable cache and catalog snapshots.
 
-## Build
+## Build policy
 
-The Xcode project is generated from `project.yml` using XcodeGen. The GitHub Actions workflow is manual and creates an unsigned IPA artifact.
+This branch is under active migration. A successful source commit does not imply an IPA build or device verification.

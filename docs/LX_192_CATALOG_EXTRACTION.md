@@ -114,6 +114,14 @@ Implementation details:
 
 Status: source and bridge wiring are committed, but no Xcode compile or cryptographic test vectors have been run yet. In particular, raw RSA interoperability, Security key import, CommonCrypto mode parity, and the React Native MD5/Base64 edge cases remain unverified on iOS. Do not yet mark NetEase/QQ/Kuwo provider requests as live-tested.
 
+## Buffer compatibility scope
+
+The supplied LX 1.9.2 source uses the Node Buffer surface in several provider helpers, including Base64/hex decoding, UTF-8 conversion, byte-array construction, slicing, reversing, concatenation, and fixed-size allocation. The first MusicXLX shim is intentionally limited to the operations observed in the selected catalog dependency graph; it is not a complete Node Buffer replacement. It is loaded as an app resource before the provider bundle. The `buffer` package import still needs to be aliased to this global in the reproducible bundle step.
+
+Observed call sites include Kugou's `util.js` and `lyric.js`, Kuwo's lyric decoder, QQ's QRC decoder and crypto helper, Migu's MRC utility, and NetEase's crypto helper. Do not mark a provider's entire feature set supported solely because the shim loads: verify each selected module's actual Buffer calls and pako requirements.
+
+pako remains a separate dependency. The LX source uses `inflate` and `constants` in QQ lyric decoding, `inflate` in Kuwo lyric decoding, and `inflate` in Kugou utility code. It must be bundled from the pinned LX 1.9.2 dependency (`pako` 2.1.x), not replaced with a no-op or a platform-specific guess.
+
 ## Transport compatibility contract
 
 The original `httpFetch(url, options)` returns an object with:

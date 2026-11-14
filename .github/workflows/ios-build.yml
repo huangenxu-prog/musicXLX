@@ -1,0 +1,58 @@
+name: iOS Simulator Build
+
+on:
+  push:
+    branches:
+      - integration/musicx-experience-cache
+    paths:
+      - "ios/**"
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/ios-build.yml"
+  pull_request:
+    branches:
+      - integration/musicx-experience-cache
+    paths:
+      - "ios/**"
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/ios-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: integration/musicx-experience-cache
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Install CocoaPods dependencies
+        run: pod install --project-directory=ios
+
+      - name: Build iOS Simulator app
+        run: |
+          xcodebuild \
+            -workspace ios/LxMusicMobile.xcworkspace \
+            -scheme LxMusicMobile \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build

@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react'
 import {
   Animated,
   Easing,
@@ -8,7 +8,6 @@ import {
   View,
   useWindowDimensions,
   type ColorValue,
-  type ReactNode,
   type StyleProp,
   type ViewStyle,
 } from 'react-native'

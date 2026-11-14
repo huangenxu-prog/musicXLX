@@ -246,7 +246,6 @@ final class LXCatalogJavaScriptRuntime {
         });
       };
 
-      global.httpFetch = global.__lxCatalogHTTPFetch;
       global.__lxCatalogHTTPFetch = function (url, options) {
         options = options || {};
         var id = String(++sequence);
@@ -270,6 +269,7 @@ final class LXCatalogJavaScriptRuntime {
           }
         };
       };
+      global.httpFetch = global.__lxCatalogHTTPFetch;
     })(this);
     """
 }

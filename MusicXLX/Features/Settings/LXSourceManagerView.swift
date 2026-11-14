@@ -53,7 +53,7 @@ struct LXSourceManagerView: View {
                                         .foregroundStyle(entry.isEnabled ? Color.green.opacity(0.9) : .white.opacity(0.4))
                                     let capabilities = services.sourceCapabilities(id: entry.metadata.id)
                                     if !capabilities.isEmpty {
-                                        Text("平台：" + capabilities.keys.sorted().joined(separator: "、"))
+                                        Text("平台：" + capabilities.keys.sorted().map(platformName).joined(separator: "、"))
                                             .font(.system(size: 11))
                                             .foregroundStyle(.white.opacity(0.55))
                                     }
@@ -123,6 +123,21 @@ struct LXSourceManagerView: View {
 
     private func refresh() {
         entries = services.installedSources()
+    }
+
+    private func platformName(_ platform: String) -> String {
+        switch platform {
+        case "wy": "网易云"
+        case "tx": "QQ"
+        case "kw": "酷我"
+        case "kg": "酷狗"
+        case "mg": "咪咕"
+        case "qs": "汽水"
+        case "ytm": "YouTube Music"
+        case "yt": "YouTube"
+        case "sp": "Spotify"
+        default: platform
+        }
     }
 
     private func importFile(_ result: Result<URL, Error>) {

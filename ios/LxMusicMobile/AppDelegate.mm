@@ -2,6 +2,8 @@
 #import <ReactNativeNavigation/ReactNativeNavigation.h>
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
+#import <string.h>
 #import <React/RCTUtils.h>
 #import <UIKit/UIKit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -116,7 +118,12 @@ RCT_EXPORT_MODULE(UserApiModule)
 }
 
 - (dispatch_queue_t)methodQueue {
-  return dispatch_queue_create("com.lxmusic.userapi", DISPATCH_QUEUE_SERIAL);
+  static dispatch_queue_t queue;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    queue = dispatch_queue_create("com.lxmusic.userapi", DISPATCH_QUEUE_SERIAL);
+  });
+  return queue;
 }
 
 - (void)emitAction:(NSString *)action data:(NSString *)data {

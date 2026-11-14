@@ -74,30 +74,48 @@ struct LXKuwoPlaylistCatalog {
         }
         let digest = String(parts[0].dropFirst("digest-".count))
         var playlistID = parts[1]
-        if digest == "5" {
-            playlistID = try await resolveDigest5PlaylistID(playlistID)
-        } else if digest != "8" {
+        let rows: [[String: Any]]
+        if digest == "5" { playlistID = try await resolveDigest5PlaylistID(playlistID) }
+        if digest == "13" {
+            var components = URLComponents(string: "https://search.kuwo.cn/r.s")!
+            components.queryItems = [
+                URLQueryItem(name: "pn", value: "0"),
+                URLQueryItem(name: "rn", value: String(songLimit)),
+                URLQueryItem(name: "stype", value: "albuminfo"),
+                URLQueryItem(name: "albumid", value: playlistID),
+                URLQueryItem(name: "show_copyright_off", value: "0"),
+                URLQueryItem(name: "encoding", value: "utf"),
+                URLQueryItem(name: "vipver", value: "MUSIC_9.1.0")
+            ]
+            let object = try await getJSON(components.url!)
+            guard let root = object as? [String: Any],
+                  let albumRows = root["musiclist"] as? [[String: Any]] else {
+                throw CatalogError.invalidResponse
+            }
+            rows = albumRows
+        } else if digest == "8" || digest == "5" {
+            var components = URLComponents(string: "https://nplserver.kuwo.cn/pl.svc")!
+            components.queryItems = [
+                URLQueryItem(name: "op", value: "getlistinfo"),
+                URLQueryItem(name: "pid", value: playlistID),
+                URLQueryItem(name: "pn", value: "0"),
+                URLQueryItem(name: "rn", value: String(songLimit)),
+                URLQueryItem(name: "encode", value: "utf8"),
+                URLQueryItem(name: "keyset", value: "pl2012"),
+                URLQueryItem(name: "identity", value: "kuwo"),
+                URLQueryItem(name: "pcmp4", value: "1"),
+                URLQueryItem(name: "vipver", value: "MUSIC_9.0.5.0_W1"),
+                URLQueryItem(name: "newver", value: "1")
+            ]
+            let object = try await getJSON(components.url!)
+            guard let root = object as? [String: Any],
+                  Self.string(root["result"]) == "ok",
+                  let playlistRows = root["musiclist"] as? [[String: Any]] else {
+                throw CatalogError.invalidResponse
+            }
+            rows = playlistRows
+        } else {
             throw CatalogError.unsupportedDigest(digest)
-        }
-
-        var components = URLComponents(string: "https://nplserver.kuwo.cn/pl.svc")!
-        components.queryItems = [
-            URLQueryItem(name: "op", value: "getlistinfo"),
-            URLQueryItem(name: "pid", value: playlistID),
-            URLQueryItem(name: "pn", value: "0"),
-            URLQueryItem(name: "rn", value: String(songLimit)),
-            URLQueryItem(name: "encode", value: "utf8"),
-            URLQueryItem(name: "keyset", value: "pl2012"),
-            URLQueryItem(name: "identity", value: "kuwo"),
-            URLQueryItem(name: "pcmp4", value: "1"),
-            URLQueryItem(name: "vipver", value: "MUSIC_9.0.5.0_W1"),
-            URLQueryItem(name: "newver", value: "1")
-        ]
-        let object = try await getJSON(components.url!)
-        guard let root = object as? [String: Any],
-              Self.string(root["result"]) == "ok",
-              let rows = root["musiclist"] as? [[String: Any]] else {
-            throw CatalogError.invalidResponse
         }
 
         var seen = Set<String>()

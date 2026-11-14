@@ -53,6 +53,7 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
             throw MusicXLXRuntimeError.sourceStoreUnavailable(storeError ?? "未知错误")
         }
 
+        await sourceManager.waitUntilRestored()
         let scriptIDs = sourceManager.enabledSourceIDs(for: song.source.rawValue)
         guard !scriptIDs.isEmpty else {
             throw MusicXLXRuntimeError.noEnabledSource(song.source.displayName)
@@ -111,6 +112,7 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
             throw MusicXLXRuntimeError.sourceStoreUnavailable(storeError ?? "未知错误")
         }
 
+        await sourceManager.waitUntilRestored()
         let info = Self.musicInfo(for: song, quality: MusicQuality.standard.rawValue)
         for scriptID in sourceManager.enabledSourceIDs(for: song.source.rawValue) {
             guard let entry = sourceManager.sources().first(where: { $0.metadata.id == scriptID }),
@@ -136,6 +138,7 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
             throw MusicXLXRuntimeError.sourceStoreUnavailable(storeError ?? "未知错误")
         }
 
+        await sourceManager.waitUntilRestored()
         let info = Self.musicInfo(for: song, quality: MusicQuality.standard.rawValue)
         for scriptID in sourceManager.enabledSourceIDs(for: song.source.rawValue) {
             guard let entry = sourceManager.sources().first(where: { $0.metadata.id == scriptID }),

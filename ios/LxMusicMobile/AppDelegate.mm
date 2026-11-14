@@ -21,7 +21,8 @@ static NSString *LXBase64String(NSData *data) {
 }
 
 static NSString *LXMD5(NSString *value) {
-  NSString *decoded = [value stringByRemovingPercentEncoding] ?: value;
+  NSString *source = value ?: @"";
+  NSString *decoded = [source stringByRemovingPercentEncoding] ?: source;
   NSData *input = [decoded dataUsingEncoding:NSUTF8StringEncoding];
   unsigned char digest[CC_MD5_DIGEST_LENGTH];
   CC_MD5(input.bytes, (CC_LONG)input.length, digest);
@@ -80,8 +81,7 @@ static NSString *LXRSANoPaddingEncrypt(NSString *data, NSString *publicKeyBase64
   if (rawKey == nil) return @"";
   NSDictionary *attributes = @{
     (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeRSA,
-    (__bridge id)kSecAttrKeyClass: (__bridge id)kSecAttrKeyClassPublic,
-    (__bridge id)kSecAttrKeySizeInBits: @2048
+    (__bridge id)kSecAttrKeyClass: (__bridge id)kSecAttrKeyClassPublic
   };
   CFErrorRef keyError = NULL;
   SecKeyRef publicKey = SecKeyCreateWithData((__bridge CFDataRef)rawKey, (__bridge CFDictionaryRef)attributes, &keyError);
@@ -185,7 +185,8 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
     [weakSelf emitAction:action data:data];
   };
   context[@"__lx_native_call__utils_str2b64"] = ^NSString *(NSString *value) {
-    return LXBase64String([[value ?: @"" dataUsingEncoding:NSUTF8StringEncoding] copy]);
+    NSString *source = value ?: @"";
+    return LXBase64String([source dataUsingEncoding:NSUTF8StringEncoding]);
   };
   context[@"__lx_native_call__utils_b642buf"] = ^NSString *(NSString *value) {
     NSData *data = LXBase64Data(value);

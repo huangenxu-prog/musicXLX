@@ -108,7 +108,7 @@ protocol MusicXLXRuntimeServing: MusicCatalogServing {
     func sourceCapabilities(id: String) -> [String: [String]] {
         guard let registration = sourceManager?.registration(for: id) else { return [:] }
         return registration.sources.mapValues { platform in
-            platform.actions + platform.qualitys.map { "quality:\\($0)" }
+            platform.actions + platform.qualitys.map { "quality:\($0)" }
         }
     }
 

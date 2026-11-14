@@ -19,17 +19,22 @@ The app-level registration in `src/utils/musicSdk/index.js` includes `kw`, `kg`,
 
 ## Exact provider method inventory verified in source
 
-The following names are the actual method names found in the LX 1.9.2 files (not proposed MusicXLX API names):
+The actual method names below were checked in the LX 1.9.2 source files. They are not inferred from filenames.
 
-| Provider | Search method | Chart methods | Playlist methods | Album methods |
+| Provider | Song search | Charts | Playlist categories/list/detail | Album detail |
 |---|---|---|---|---|
-| `wy` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | no dedicated album provider file/method confirmed |
-| `tx` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | no dedicated album provider file/method confirmed |
-| `kw` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | `album.getAlbumListDetail` |
-| `kg` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListInfo`, `getSongListRecommend`, `search` | `album.getAlbumInfo`, `album.getAlbumDetail` |
-| `mg` | `musicSearch.search` | `leaderboard.getBoardsData`, `leaderboard.getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | `album.getAlbumInfo`, `album.getAlbumDetail` |
+| `wy` | `musicSearch.search` | `leaderboard.getBoardsData`, `getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | no separate album module; playlist detail can use `wy/musicDetail.getList` to hydrate missing track data |
+| `tx` | `musicSearch.search` | `leaderboard.getBoardsData`, `getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | no album-detail module/method exposed by the `tx` provider |
+| `kw` | `musicSearch.search` | `leaderboard.getBoardsData`, `getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | `songList.getListDetail` recognizes `digest-13` and delegates to `album.getAlbumListDetail` |
+| `kg` | `musicSearch.search` | `leaderboard.getBoardsData` | `songList.getTags`, `getList`, `getListInfo`, `getSongListRecommend`, `search` | `kg/album.js` contains `getAlbumInfo/getAlbumDetail`, but this module is not imported/exposed by `kg/index.js` in the default provider object |
+| `mg` | `musicSearch.search` | `leaderboard.getBoardsData`, `getList` | `songList.getTags`, `getList`, `getListDetail`, `search` | `mg/album.js` contains `getAlbumInfo/getAlbumDetail`, but this module is not imported/exposed by `mg/index.js` in the default provider object |
 
-Important source detail: NetEase's `getListDetail` may call `musicDetailApi.getList` when the playlist's track metadata is incomplete. That dependency must be included in the extracted module graph.
+Notes:
+- The leaderboard method is `getBoardsData()`, not `getBoards()`.
+- Kugou's default `songList` module uses `getListInfo` and a detail implementation; do not invent a `getListDetail` method for it.
+- QQ's `getRecommendList` was not found in the inspected v1.9.2 `tx/songList.js`; do not treat that method as confirmed.
+- The album modules for Kugou and Migu exist as source files but are not wired into the default provider exports. They can be reused by explicitly importing them in the extracted bridge, while clearly preserving this distinction.
+- NetEase's `songList.getListDetail` can call `musicDetailApi.getList` to hydrate track data when playlist metadata is incomplete.
 
 ## Required runtime compatibility layer
 

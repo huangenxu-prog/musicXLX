@@ -223,10 +223,24 @@ final class LXJavaScriptRuntime {
         case "request":
             guard let data = payload.data(using: .utf8),
                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let key = object["requestKey"] as? String,
+                  let key = object["requestKey"] as? String, !key.isEmpty,
                   let urlString = object["url"] as? String,
                   let url = URL(string: urlString),
-                  let options = object["options"] as? [String: Any] else { return }
+                  let options = object["options"] as? [String: Any],
+                  let scheme = url.scheme?.lowercased(),
+                  (scheme == "http" || scheme == "https"),
+                  url.host != nil else {
+                if let data = payload.data(using: .utf8),
+                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let key = object["requestKey"] as? String {
+                    callJavaScript(action: "response", json: Self.jsonString([
+                        "requestKey": key,
+                        "error": "Invalid or unsupported request URL",
+                        "response": NSNull()
+                    ]))
+                }
+                return
+            }
             performRequest(key: key, url: url, options: options, token: token)
         case "cancelRequest":
             let requestKey = (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) as? String ?? payload
@@ -362,15 +376,15 @@ final class LXJavaScriptRuntime {
 
         var body = Data()
         for part in parts where part.count >= 2 {
-            let name = String(describing: part[0])
+            let name = Self.safeMultipartHeader(String(describing: part[0]))
             let value = part[1]
             body.append(Data("--\(boundary)\r\n".utf8))
             if let file = value as? [String: Any],
                let uri = file["uri"] as? String,
                let url = URL(string: uri), url.isFileURL,
                let data = try? Data(contentsOf: url) {
-                let fileName = (file["name"] as? String) ?? url.lastPathComponent
-                let mime = (file["type"] as? String) ?? "application/octet-stream"
+                let fileName = Self.safeMultipartHeader((file["name"] as? String) ?? url.lastPathComponent)
+                let mime = Self.safeMultipartHeader((file["type"] as? String) ?? "application/octet-stream")
                 body.append(Data("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(fileName)\"\r\n".utf8))
                 body.append(Data("Content-Type: \(mime)\r\n\r\n".utf8))
                 body.append(data)
@@ -385,6 +399,15 @@ final class LXJavaScriptRuntime {
         return body
     }
 
+
+    private static func safeMultipartHeader(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\r", with: "")
+            .replacingOccurrences(of: "\\n", with: "")
+            .replacingOccurrences(of: "\"", with: "")
+            .prefix(255)
+            .description
+    }
 
     private static func jsonString(_ value: [String: Any]) -> String {
         guard let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]),

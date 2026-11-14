@@ -1,0 +1,114 @@
+import Foundation
+
+/// Coordinates persisted source scripts and their isolated JavaScript runtimes.
+/// Import is inert by default; enabling a source creates and initializes its runtime.
+@MainActor
+final class LXSourceManager {
+    enum ManagerError: LocalizedError {
+        case preloadResourceMissing
+
+        var errorDescription: String? {
+            switch self {
+            case .preloadResourceMissing: return "应用包中找不到洛雪 preload 资源。"
+            }
+        }
+    }
+
+    private let store: LXSourceStore
+    private let bundle: Bundle
+    private var runtimes: [String: LXJavaScriptRuntime] = [:]
+    private var registrations: [String: LXJavaScriptRuntime.RegisteredSource] = [:]
+
+    init(store: LXSourceStore, bundle: Bundle = .main) {
+        self.store = store
+        self.bundle = bundle
+    }
+
+    func sources() -> [LXSourceStore.Entry] {
+        store.list()
+    }
+
+    @discardableResult
+    func importSource(script: String, metadata: LXSourceStore.Metadata) throws -> LXSourceStore.Entry {
+        try store.importScript(script, metadata: metadata, enabled: false)
+    }
+
+    func enableSource(id: String, completion: @escaping (Result<LXJavaScriptRuntime.RegisteredSource, Error>) -> Void) {
+        do {
+            let entry = try store.setEnabled(true, id: id)
+            try load(entry: entry, completion: completion)
+        } catch {
+            completion(.failure(error))
+        }
+    }
+
+    func disableSource(id: String) throws {
+        runtimes.removeValue(forKey: id)?.destroy()
+        registrations.removeValue(forKey: id)
+        _ = try store.setEnabled(false, id: id)
+    }
+
+    func reloadSource(id: String, completion: @escaping (Result<LXJavaScriptRuntime.RegisteredSource, Error>) -> Void) {
+        do {
+            guard let entry = store.list().first(where: { $0.metadata.id == id }) else {
+                throw LXSourceStore.StoreError.sourceNotFound(id)
+            }
+            try load(entry: entry, completion: completion)
+        } catch {
+            completion(.failure(error))
+        }
+    }
+
+    func updateSource(id: String, script: String, metadata: LXSourceStore.Metadata? = nil, completion: ((Result<LXJavaScriptRuntime.RegisteredSource, Error>) -> Void)? = nil) throws {
+        let entry = try store.updateScript(id: id, script: script, metadata: metadata)
+        guard entry.isEnabled else { return }
+        try load(entry: entry) { result in completion?(result) }
+    }
+
+    func removeSource(id: String) throws {
+        runtimes.removeValue(forKey: id)?.destroy()
+        registrations.removeValue(forKey: id)
+        try store.remove(id: id)
+    }
+
+    func registration(for id: String) -> LXJavaScriptRuntime.RegisteredSource? {
+        registrations[id]
+    }
+
+    private func load(entry: LXSourceStore.Entry, completion: @escaping (Result<LXJavaScriptRuntime.RegisteredSource, Error>) -> Void) throws {
+        guard let preloadURL = bundle.url(forResource: "user-api-preload", withExtension: "js", subdirectory: "LXRuntime")
+                ?? bundle.url(forResource: "user-api-preload", withExtension: "js") else {
+            throw ManagerError.preloadResourceMissing
+        }
+        let preload = try String(contentsOf: preloadURL, encoding: .utf8)
+        let script = try store.script(for: entry.metadata.id)
+        runtimes.removeValue(forKey: entry.metadata.id)?.destroy()
+        registrations.removeValue(forKey: entry.metadata.id)
+
+        let runtime = LXJavaScriptRuntime()
+        runtimes[entry.metadata.id] = runtime
+        let metadata = entry.metadata
+        let runtimeMetadata = LXJavaScriptRuntime.ScriptMetadata(
+            id: metadata.id,
+            name: metadata.name,
+            description: metadata.description,
+            version: metadata.version,
+            author: metadata.author,
+            homepage: metadata.homepage
+        )
+        runtime.load(script: script, metadata: runtimeMetadata, preload: preload) { [weak self, weak runtime] result in
+            DispatchQueue.main.async {
+                guard let self, let runtime, self.runtimes[entry.metadata.id] === runtime else { return }
+                switch result {
+                case .success(let registered):
+                    self.registrations[entry.metadata.id] = registered
+                    completion(.success(registered))
+                case .failure(let error):
+                    self.runtimes.removeValue(forKey: entry.metadata.id)?.destroy()
+                    self.registrations.removeValue(forKey: entry.metadata.id)
+                    completion(.failure(error))
+                }
+            }
+        }
+    }
+}

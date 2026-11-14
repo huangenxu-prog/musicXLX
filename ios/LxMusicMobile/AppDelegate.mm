@@ -269,6 +269,218 @@ RCT_EXPORT_METHOD(destroy)
 
 @end
 
+
+static NSData *LXDERLength(NSUInteger length) {
+  if (length < 128) return [NSData dataWithBytes:(uint8_t[]){(uint8_t)length} length:1];
+  uint8_t bytes[sizeof(NSUInteger)];
+  NSUInteger count = 0, value = length;
+  while (value > 0) { bytes[sizeof(bytes) - 1 - count++] = (uint8_t)(value & 0xff); value >>= 8; }
+  NSMutableData *result = [NSMutableData dataWithBytes:(uint8_t[]){(uint8_t)(0x80 | count)} length:1];
+  [result appendBytes:bytes + sizeof(bytes) - count length:count];
+  return result;
+}
+
+static NSData *LXDERWrap(uint8_t tag, NSData *content) {
+  NSMutableData *result = [NSMutableData dataWithBytes:&tag length:1];
+  [result appendData:LXDERLength(content.length)];
+  [result appendData:content];
+  return result;
+}
+
+static NSData *LXRSAPublicX509FromPKCS1(NSData *raw) {
+  const uint8_t oidBytes[] = {0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01,0x05,0x00};
+  NSData *algorithm = LXDERWrap(0x30, [NSData dataWithBytes:oidBytes length:sizeof(oidBytes)]);
+  NSMutableData *bitStringContent = [NSMutableData dataWithBytes:(uint8_t[]){0x00} length:1];
+  [bitStringContent appendData:raw];
+  NSData *bitString = LXDERWrap(0x03, bitStringContent);
+  NSMutableData *outer = [NSMutableData dataWithData:algorithm];
+  [outer appendData:bitString];
+  return LXDERWrap(0x30, outer);
+}
+
+static NSData *LXRSAPrivatePKCS8FromPKCS1(NSData *raw) {
+  const uint8_t versionBytes[] = {0x02,0x01,0x00};
+  const uint8_t oidBytes[] = {0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01,0x05,0x00};
+  NSData *version = [NSData dataWithBytes:versionBytes length:sizeof(versionBytes)];
+  NSData *algorithm = LXDERWrap(0x30, [NSData dataWithBytes:oidBytes length:sizeof(oidBytes)]);
+  NSData *privateKey = LXDERWrap(0x04, raw);
+  NSMutableData *outer = [NSMutableData dataWithData:version];
+  [outer appendData:algorithm];
+  [outer appendData:privateKey];
+  return LXDERWrap(0x30, outer);
+}
+
+static NSData *LXRSAPrivateKeyFromPKCS8(NSData *pkcs8) {
+  const uint8_t *bytes = pkcs8.bytes;
+  NSUInteger total = pkcs8.length, offset = 0, length = 0;
+  if (total < 16 || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
+  if (offset >= total || bytes[offset++] != 0x02 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
+  if (offset + length > total) return nil;
+  offset += length;
+  if (offset >= total || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
+  if (offset + length > total) return nil;
+  offset += length;
+  if (offset >= total || bytes[offset++] != 0x04 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
+  if (offset + length > total) return nil;
+  return [NSData dataWithBytes:bytes + offset length:length];
+}
+
+static NSString *LXRSACrypt(NSString *dataBase64, NSString *keyBase64, NSString *padding, BOOL encrypt) {
+  NSData *encodedKey = LXBase64Data(keyBase64);
+  NSData *rawKey = encrypt ? LXRSAPublicKeyFromX509(encodedKey) : LXRSAPrivateKeyFromPKCS8(encodedKey);
+  if (rawKey == nil) return @"";
+  NSDictionary *attributes = @{
+    (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeRSA,
+    (__bridge id)kSecAttrKeyClass: (__bridge id)(encrypt ? kSecAttrKeyClassPublic : kSecAttrKeyClassPrivate)
+  };
+  CFErrorRef keyError = NULL;
+  SecKeyRef key = SecKeyCreateWithData((__bridge CFDataRef)rawKey, (__bridge CFDictionaryRef)attributes, &keyError);
+  if (key == NULL) {
+    if (keyError) CFRelease(keyError);
+    return @"";
+  }
+  SecKeyAlgorithm algorithm = [padding isEqualToString:@"RSA/ECB/OAEPWithSHA1AndMGF1Padding"]
+    ? kSecKeyAlgorithmRSAEncryptionOAEPSHA1
+    : kSecKeyAlgorithmRSAEncryptionRaw;
+  SecKeyOperationType operation = encrypt ? kSecKeyOperationTypeEncrypt : kSecKeyOperationTypeDecrypt;
+  if (!SecKeyIsAlgorithmSupported(key, operation, algorithm)) {
+    CFRelease(key);
+    if (keyError) CFRelease(keyError);
+    return @"";
+  }
+  NSData *input = LXBase64Data(dataBase64);
+  CFErrorRef operationError = NULL;
+  CFDataRef output = encrypt
+    ? SecKeyCreateEncryptedData(key, algorithm, (__bridge CFDataRef)input, &operationError)
+    : SecKeyCreateDecryptedData(key, algorithm, (__bridge CFDataRef)input, &operationError);
+  CFRelease(key);
+  if (keyError) CFRelease(keyError);
+  if (output == NULL) {
+    if (operationError) CFRelease(operationError);
+    return @"";
+  }
+  NSData *resultData = (__bridge_transfer NSData *)output;
+  if (operationError) CFRelease(operationError);
+  return encrypt ? LXBase64String(resultData) : ([[NSString alloc] initWithData:resultData encoding:NSUTF8StringEncoding] ?: @"");
+}
+
+static NSString *LXAESDecrypt(NSString *data, NSString *key, NSString *iv, NSString *mode) {
+  NSData *input = LXBase64Data(data);
+  NSData *keyData = LXBase64Data(key);
+  NSData *ivData = LXBase64Data(iv);
+  BOOL cbc = [mode containsString:@"CBC"];
+  CCOptions options = cbc ? kCCOptionPKCS7Padding : kCCOptionECBMode;
+  if (cbc) options |= kCCOptionPKCS7Padding;
+  unsigned char ivBytes[kCCBlockSizeAES128] = {0};
+  if (cbc && ivData.length > 0) memcpy(ivBytes, ivData.bytes, MIN(ivData.length, sizeof(ivBytes)));
+  size_t outputCapacity = input.length + kCCBlockSizeAES128;
+  NSMutableData *output = [NSMutableData dataWithLength:outputCapacity];
+  size_t outputLength = 0;
+  CCCryptorStatus status = CCCrypt(kCCDecrypt, kCCAlgorithmAES, options,
+    keyData.bytes, keyData.length, cbc ? ivBytes : NULL,
+    input.bytes, input.length, output.mutableBytes, outputCapacity, &outputLength);
+  if (status != kCCSuccess) return @"";
+  output.length = outputLength;
+  return [[NSString alloc] initWithData:output encoding:NSUTF8StringEncoding] ?: @"";
+}
+
+static NSString *LXSHA1(NSString *value) {
+  NSData *input = [(value ?: @"") dataUsingEncoding:NSUTF8StringEncoding];
+  unsigned char digest[CC_SHA1_DIGEST_LENGTH];
+  CC_SHA1(input.bytes, (CC_LONG)input.length, digest);
+  NSMutableString *result = [NSMutableString stringWithCapacity:CC_SHA1_DIGEST_LENGTH * 2];
+  for (NSUInteger i = 0; i < CC_SHA1_DIGEST_LENGTH; i++) [result appendFormat:@"%02x", digest[i]];
+  return result;
+}
+
+static NSDictionary *LXGenerateRSAKeyPair(void) {
+  NSDictionary *privateAttributes = @{(__bridge id)kSecAttrIsPermanent: @NO};
+  NSDictionary *attributes = @{
+    (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeRSA,
+    (__bridge id)kSecAttrKeySizeInBits: @2048,
+    (__bridge id)kSecPrivateKeyAttrs: privateAttributes
+  };
+  CFErrorRef error = NULL;
+  SecKeyRef privateKey = SecKeyCreateRandomKey((__bridge CFDictionaryRef)attributes, &error);
+  if (privateKey == NULL) {
+    if (error) CFRelease(error);
+    return nil;
+  }
+  SecKeyRef publicKey = SecKeyCopyPublicKey(privateKey);
+  CFErrorRef publicError = NULL, privateError = NULL;
+  NSData *publicRaw = (__bridge_transfer NSData *)SecKeyCopyExternalRepresentation(publicKey, &publicError);
+  NSData *privateRaw = (__bridge_transfer NSData *)SecKeyCopyExternalRepresentation(privateKey, &privateError);
+  CFRelease(publicKey);
+  CFRelease(privateKey);
+  if (error) CFRelease(error);
+  if (publicError) CFRelease(publicError);
+  if (privateError) CFRelease(privateError);
+  if (publicRaw == nil || privateRaw == nil) return nil;
+  return @{
+    @"publicKey": LXBase64String(LXRSAPublicX509FromPKCS1(publicRaw)),
+    @"privateKey": LXBase64String(LXRSAPrivatePKCS8FromPKCS1(privateRaw))
+  };
+}
+
+@interface LXCryptoModule : NSObject <RCTBridgeModule>
+@end
+
+@implementation LXCryptoModule
+
+RCT_EXPORT_MODULE(CryptoModule)
+
+RCT_EXPORT_METHOD(generateRsaKey:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+  NSDictionary *keys = LXGenerateRSAKeyPair();
+  if (keys == nil) reject(@"E_RSA_KEYGEN", @"Unable to generate RSA key pair", nil);
+  else resolve(keys);
+}
+
+RCT_EXPORT_METHOD(rsaEncrypt:(NSString *)text key:(NSString *)key padding:(NSString *)padding resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+  NSString *result = LXRSACrypt(text, key, padding, YES);
+  if (result.length == 0) reject(@"E_RSA_ENCRYPT", @"RSA encryption failed", nil);
+  else resolve(result);
+}
+
+RCT_EXPORT_METHOD(rsaDecrypt:(NSString *)text key:(NSString *)key padding:(NSString *)padding resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+  NSString *result = LXRSACrypt(text, key, padding, NO);
+  if (result.length == 0) reject(@"E_RSA_DECRYPT", @"RSA decryption failed", nil);
+  else resolve(result);
+}
+
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(rsaEncryptSync:(NSString *)text key:(NSString *)key padding:(NSString *)padding) {
+  return LXRSACrypt(text, key, padding, YES);
+}
+
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(rsaDecryptSync:(NSString *)text key:(NSString *)key padding:(NSString *)padding) {
+  return LXRSACrypt(text, key, padding, NO);
+}
+
+RCT_EXPORT_METHOD(aesEncrypt:(NSString *)text key:(NSString *)key iv:(NSString *)iv mode:(NSString *)mode resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+  NSString *result = LXAES(text, key, iv, mode);
+  if (result.length == 0) reject(@"E_AES_ENCRYPT", @"AES encryption failed", nil);
+  else resolve(result);
+}
+
+RCT_EXPORT_METHOD(aesDecrypt:(NSString *)text key:(NSString *)key iv:(NSString *)iv mode:(NSString *)mode resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+  NSString *result = LXAESDecrypt(text, key, iv, mode);
+  if (result.length == 0) reject(@"E_AES_DECRYPT", @"AES decryption failed", nil);
+  else resolve(result);
+}
+
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(aesEncryptSync:(NSString *)text key:(NSString *)key iv:(NSString *)iv mode:(NSString *)mode) {
+  return LXAES(text, key, iv, mode);
+}
+
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(aesDecryptSync:(NSString *)text key:(NSString *)key iv:(NSString *)iv mode:(NSString *)mode) {
+  return LXAESDecrypt(text, key, iv, mode);
+}
+
+RCT_EXPORT_METHOD(sha1:(NSString *)input resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+  resolve(LXSHA1(input));
+}
+
+@end
+
 @interface LXScreenControlModule : NSObject <RCTBridgeModule>
 @end
 

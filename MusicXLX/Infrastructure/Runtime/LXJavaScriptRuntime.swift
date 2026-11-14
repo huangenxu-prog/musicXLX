@@ -304,7 +304,7 @@ final class LXJavaScriptRuntime {
             key.withUnsafeBytes { keyBytes in
                 iv?.withUnsafeBytes { ivBytes in
                     CCCrypt(CCOperation(kCCEncrypt), CCAlgorithm(kCCAlgorithmAES),
-                            CCOptions(kCCOptionPKCS7Padding | (ecb ? kCCOptionECBMode : 0)),
+                            CCOptions(ecb ? 0 : kCCOptionPKCS7Padding),
                             keyBytes.baseAddress, key.count, ecb ? nil : ivBytes?.baseAddress,
                             inputBytes.baseAddress, input.count, &output, outputCapacity, &moved)
                 } ?? CCCrypt(CCOperation(kCCEncrypt), CCAlgorithm(kCCAlgorithmAES),

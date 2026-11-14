@@ -18,6 +18,9 @@ final class LXSourceManager {
     private let bundle: Bundle
     private var runtimes: [String: LXJavaScriptRuntime] = [:]
     private var registrations: [String: LXJavaScriptRuntime.RegisteredSource] = [:]
+    private var hasStartedRestore = false
+    private var restorePendingCount = 0
+    private var restoreWaiters: [CheckedContinuation<Void, Never>] = []
 
     init(store: LXSourceStore, bundle: Bundle = .main) {
         self.store = store
@@ -30,7 +33,6 @@ final class LXSourceManager {
 
     @discardableResult
     func importSource(script: String, metadata: LXSourceStore.Metadata) throws -> LXSourceStore.Entry {
-        // Re-importing the same script ID replaces the old runtime as well as its stored bytes.
         runtimes.removeValue(forKey: metadata.id)?.destroy()
         registrations.removeValue(forKey: metadata.id)
         return try store.importScript(script, metadata: metadata, enabled: false)
@@ -89,17 +91,40 @@ final class LXSourceManager {
             .map { $0.metadata.id }
     }
 
+    /// Wait until all persisted enabled scripts have either registered or failed.
+    /// Playback must not race app-start restoration and incorrectly report no source.
+    func waitUntilRestored() async {
+        if hasStartedRestore && restorePendingCount == 0 { return }
+        await withCheckedContinuation { continuation in
+            restoreWaiters.append(continuation)
+        }
+    }
+
     func restoreEnabledSources() {
-        for entry in store.list() where entry.isEnabled {
+        guard !hasStartedRestore else { return }
+        hasStartedRestore = true
+        let entries = store.list().filter(\.isEnabled)
+        restorePendingCount = entries.count
+        guard !entries.isEmpty else {
+            finishRestorationIfNeeded()
+            return
+        }
+
+        for entry in entries {
             do {
                 try load(entry: entry) { result in
                     if case .failure(let error) = result {
                         _ = try? self.store.setEnabled(false, id: entry.metadata.id)
                         NSLog("[MusicXLX:LX] restore failed (%@): %@", entry.metadata.id, error.localizedDescription)
                     }
+                    self.restorePendingCount = max(0, self.restorePendingCount - 1)
+                    self.finishRestorationIfNeeded()
                 }
             } catch {
+                _ = try? store.setEnabled(false, id: entry.metadata.id)
                 NSLog("[MusicXLX:LX] restore failed (%@): %@", entry.metadata.id, error.localizedDescription)
+                restorePendingCount = max(0, restorePendingCount - 1)
+                finishRestorationIfNeeded()
             }
         }
     }
@@ -118,6 +143,13 @@ final class LXSourceManager {
             return
         }
         runtime.performSourceAction(source: platform, action: action, info: info, completion: completion)
+    }
+
+    private func finishRestorationIfNeeded() {
+        guard hasStartedRestore, restorePendingCount == 0, !restoreWaiters.isEmpty else { return }
+        let waiters = restoreWaiters
+        restoreWaiters.removeAll()
+        waiters.forEach { $0.resume() }
     }
 
     private func load(entry: LXSourceStore.Entry, completion: @escaping (Result<LXJavaScriptRuntime.RegisteredSource, Error>) -> Void) throws {

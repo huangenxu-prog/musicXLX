@@ -6,7 +6,7 @@
 #import <string.h>
 #import <React/RCTUtils.h>
 #import <UIKit/UIKit.h>
-#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <MobileCoreServices/MobileCoreServices.h>
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <CommonCrypto/CommonDigest.h>
 #import <CommonCrypto/CommonCryptor.h>
@@ -673,26 +673,23 @@ RCT_REMAP_METHOD(pickFile,
     self.reject = reject;
     self.targetPath = [options[@"toPath"] isKindOfClass:[NSString class]] ? options[@"toPath"] : nil;
 
-    UIDocumentPickerViewController *picker = nil;
-    if (@available(iOS 14.0, *)) {
-      NSMutableArray<UTType *> *types = [NSMutableArray array];
-      NSArray *extensions = [options[@"extTypes"] isKindOfClass:[NSArray class]] ? options[@"extTypes"] : @[];
-      for (id extension in extensions) {
-        if (![extension isKindOfClass:[NSString class]]) continue;
-        UTType *type = [UTType typeWithFilenameExtension:extension];
-        if (type != nil) [types addObject:type];
-      }
-      NSArray *mimeTypes = [options[@"mimeTypes"] isKindOfClass:[NSArray class]] ? options[@"mimeTypes"] : @[];
-      for (id mimeType in mimeTypes) {
-        if (![mimeType isKindOfClass:[NSString class]]) continue;
-        UTType *type = [UTType typeWithMIMEType:mimeType];
-        if (type != nil) [types addObject:type];
-      }
-      if (types.count == 0) [types addObject:UTTypeItem];
-      picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:types asCopy:YES];
-    } else {
-      picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.item"] inMode:UIDocumentPickerModeImport];
+    NSMutableArray<NSString *> *documentTypes = [NSMutableArray array];
+    NSArray *extensions = [options[@"extTypes"] isKindOfClass:[NSArray class]] ? options[@"extTypes"] : @[];
+    NSCharacterSet *dots = [NSCharacterSet characterSetWithCharactersInString:@"."];
+    for (id extension in extensions) {
+      if (![extension isKindOfClass:[NSString class]]) continue;
+      NSString *normalized = [extension stringByTrimmingCharactersInSet:dots];
+      CFStringRef identifier = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)normalized, NULL);
+      if (identifier != NULL) [documentTypes addObject:(__bridge_transfer NSString *)identifier];
     }
+    NSArray *mimeTypes = [options[@"mimeTypes"] isKindOfClass:[NSArray class]] ? options[@"mimeTypes"] : @[];
+    for (id mimeType in mimeTypes) {
+      if (![mimeType isKindOfClass:[NSString class]]) continue;
+      CFStringRef identifier = UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, (__bridge CFStringRef)mimeType, NULL);
+      if (identifier != NULL) [documentTypes addObject:(__bridge_transfer NSString *)identifier];
+    }
+    if (documentTypes.count == 0) [documentTypes addObject:@"public.item"];
+    UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:documentTypes inMode:UIDocumentPickerModeImport];
 
     picker.delegate = self;
     picker.allowsMultipleSelection = NO;

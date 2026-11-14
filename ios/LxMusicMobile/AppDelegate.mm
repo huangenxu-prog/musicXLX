@@ -82,12 +82,30 @@ static NSData *LXRSAPublicKeyFromX509(NSData *x509) {
   return [NSData dataWithBytes:bytes + offset length:length - 1];
 }
 
+static NSUInteger LXRSABitLength(NSData *pkcs1) {
+  const uint8_t *bytes = pkcs1.bytes;
+  NSUInteger total = pkcs1.length, offset = 0, length = 0;
+  if (total < 8 || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return 0;
+  if (offset >= total || bytes[offset++] != 0x02 || !LXReadASN1Length(bytes, total, &offset, &length)) return 0;
+  if (length == 0 || offset + length > total) return 0;
+  while (length > 1 && bytes[offset] == 0x00) { offset++; length--; }
+  uint8_t first = bytes[offset];
+  NSUInteger highBits = 0;
+  for (int bit = 7; bit >= 0; bit--) {
+    if ((first & (1u << bit)) != 0) { highBits = (NSUInteger)bit + 1; break; }
+  }
+  return (length - 1) * 8 + highBits;
+}
+
 static NSString *LXRSANoPaddingEncrypt(NSString *data, NSString *publicKeyBase64, NSString *padding) {
   NSData *rawKey = LXRSAPublicKeyFromX509(LXBase64Data(publicKeyBase64));
   if (rawKey == nil) return @"";
+  NSUInteger keySize = LXRSABitLength(rawKey);
+  if (keySize == 0) return @"";
   NSDictionary *attributes = @{
     (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeRSA,
-    (__bridge id)kSecAttrKeyClass: (__bridge id)kSecAttrKeyClassPublic
+    (__bridge id)kSecAttrKeyClass: (__bridge id)kSecAttrKeyClassPublic,
+    (__bridge id)kSecAttrKeySizeInBits: @(keySize)
   };
   CFErrorRef keyError = NULL;
   SecKeyRef publicKey = SecKeyCreateWithData((__bridge CFDataRef)rawKey, (__bridge CFDictionaryRef)attributes, &keyError);
@@ -347,9 +365,12 @@ static NSString *LXRSACrypt(NSString *dataBase64, NSString *keyBase64, NSString 
   NSData *encodedKey = LXBase64Data(keyBase64);
   NSData *rawKey = encrypt ? LXRSAPublicKeyFromX509(encodedKey) : LXRSAPrivateKeyFromPKCS8(encodedKey);
   if (rawKey == nil) return @"";
+  NSUInteger keySize = LXRSABitLength(rawKey);
+  if (keySize == 0) return @"";
   NSDictionary *attributes = @{
     (__bridge id)kSecAttrKeyType: (__bridge id)kSecAttrKeyTypeRSA,
-    (__bridge id)kSecAttrKeyClass: (__bridge id)(encrypt ? kSecAttrKeyClassPublic : kSecAttrKeyClassPrivate)
+    (__bridge id)kSecAttrKeyClass: (__bridge id)(encrypt ? kSecAttrKeyClassPublic : kSecAttrKeyClassPrivate),
+    (__bridge id)kSecAttrKeySizeInBits: @(keySize)
   };
   CFErrorRef keyError = NULL;
   SecKeyRef key = SecKeyCreateWithData((__bridge CFDataRef)rawKey, (__bridge CFDictionaryRef)attributes, &keyError);

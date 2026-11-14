@@ -152,7 +152,7 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
         guard let sourceManager else {
             throw MusicXLXRuntimeError.sourceStoreUnavailable(storeError ?? "未知错误")
         }
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             sourceManager.enableSource(id: id) { result in
                 continuation.resume(with: result.map { _ in () })
             }
@@ -184,7 +184,7 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
         action: String,
         info: [String: Any]
     ) async throws -> [String: Any] {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[String: Any], Error>) in
             manager.performAction(sourceID: scriptID, platform: platform, action: action, info: info) { result in
                 continuation.resume(with: result)
             }

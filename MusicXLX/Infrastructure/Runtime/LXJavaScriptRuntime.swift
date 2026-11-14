@@ -488,7 +488,8 @@ final class LXJavaScriptRuntime {
         }
         // LX desktop's RSA_NO_PADDING helper left-pads short plaintexts with
         // zero bytes to the RSA modulus length before raw RSA encryption.
-        let paddedInput = Data(repeating: 0, count: blockSize - input.count) + input
+        var paddedInput = Data(repeating: 0, count: blockSize - input.count)
+        paddedInput.append(input)
         guard SecKeyIsAlgorithmSupported(key, .encrypt, algorithm),
               let encrypted = SecKeyCreateEncryptedData(key, algorithm, paddedInput as CFData, &error) else {
             throw RuntimeError.unsupportedCrypto(error?.takeRetainedValue().localizedDescription ?? "RSA 加密失败")

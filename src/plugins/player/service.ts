@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
+import { Platform } from 'react-native'
 import TrackPlayer, { State as TPState, Event as TPEvent } from 'react-native-track-player'
 // import { store } from '@/store'
 // import { action as playerAction, STATUS } from '@/store/modules/player'
@@ -20,6 +21,12 @@ let isInitialized = false
 // 销毁播放器并退出
 const handleExitApp = async(reason: string) => {
   global.lx.isPlayedStop = false
+  if (Platform.OS === 'ios') {
+    // iOS cannot terminate its own process. A remote stop or timed exit must
+    // stop playback instead of relying on the Android-only exitApp behavior.
+    await TrackPlayer.stop()
+    return
+  }
   exitApp(reason)
 }
 

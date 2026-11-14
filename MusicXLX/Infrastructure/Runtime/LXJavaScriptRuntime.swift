@@ -154,7 +154,7 @@ final class LXJavaScriptRuntime {
         pendingInitCompletion = nil
         actionTimeouts.values.forEach { $0.cancel() }
         actionTimeouts.removeAll()
-        let pendingCallbacks = pendingActionCompletions.values
+        let pendingCallbacks = Array(pendingActionCompletions.values)
         pendingActionCompletions.removeAll()
         pendingCallbacks.forEach { $0(.failure(RuntimeError.javascript("音源运行时已关闭。"))) }
         context?.exceptionHandler = nil

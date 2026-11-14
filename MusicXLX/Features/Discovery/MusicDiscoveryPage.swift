@@ -3,7 +3,7 @@ import SwiftUI
 enum MusicDiscoveryRoute: Identifiable {
     case daily, playlists, featuredPlaylists, albums, charts, newReleases
     case chart(String)
-    case playlist(String)
+    case playlist(MusicPlaylist)
     case album(title: String, artist: String)
     var id: String {
         switch self {
@@ -14,7 +14,7 @@ enum MusicDiscoveryRoute: Identifiable {
         case .charts: "charts"
         case .newReleases: "new-releases"
         case .chart(let name): "chart-\(name)"
-        case .playlist(let name): "playlist-\(name)"
+        case .playlist(let playlist): "playlist-\(playlist.id)"
         case .album(let title, let artist): "album-\(title)-\(artist)"
         }
     }
@@ -36,11 +36,12 @@ struct MusicDiscoveryPage: View {
     let onQueueChanged: ([MusicSong]) -> Void
     let currentTime: TimeInterval
     let duration: TimeInterval
-    let onOpenPlaylist: (String) -> Void
+    let onOpenPlaylist: (MusicPlaylist) -> Void
     let onOpenAlbum: (String, String) -> Void
     let onSelectChart: (String) -> Void
 
     @State private var songs: [MusicSong] = []
+    @State private var playlists: [MusicPlaylist] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var selectedChartOverride: String?
@@ -76,7 +77,7 @@ struct MusicDiscoveryPage: View {
         case .albums: "热门专辑"
         case .charts, .chart: "排行榜"
         case .newReleases: "新歌速递"
-        case .playlist(let name): name
+        case .playlist(let playlist): playlist.name
         case .album(let title, _): title
         }
     }
@@ -88,22 +89,8 @@ struct MusicDiscoveryPage: View {
         case .charts: "陈奕迅"
         case .chart(let name): name == "新歌榜" ? "新歌" : name == "飙升榜" ? "飙升" : "热歌"
         case .newReleases: "新歌"
-        case .playlist(let name):
-            switch name {
-            case "开心愉悦": "开心"
-            case "温柔治愈": "治愈"
-            case "放松舒缓": "放松"
-            case "安静专注": "专注"
-            case "释放情绪": "摇滚"
-            case "夜晚助眠": "助眠"
-            case "本周编辑精选": "本周精选"
-            case "华语流行精选": "华语流行"
-            case "经典金曲精选": "经典金曲"
-            case "独立音乐精选": "独立音乐"
-            case "影视原声精选": "影视原声"
-            case "通勤驾驶精选": "通勤"
-            default: name
-            }
+        case .playlist:
+            ""
         case .album(let title, let artist): "\(title) \(artist)"
         }
     }
@@ -125,7 +112,7 @@ struct MusicDiscoveryPage: View {
                     case .albums: albumsIntro
                     case .charts, .chart: chartIntro
                     case .newReleases: newReleasesHeader
-                    case .playlist(let name): detailBanner(name, subtitle: playlistSubtitle(for: name))
+                    case .playlist(let playlist): detailBanner(playlist.name, subtitle: "洛雪原版歌单 · \(playlist.creator ?? "酷我音乐")")
                     case .album(let title, let artist): albumBanner(title: title, artist: artist)
                     }
                     if case .playlists = route {
@@ -351,55 +338,40 @@ struct MusicDiscoveryPage: View {
     }
 
     private var playlistGrid: some View {
-        let items: [(String, String, String)] = [
-            ("开心愉悦", "明亮轻快，让好心情延续", "category_chinese_pop"),
-            ("温柔治愈", "温暖柔和，给情绪一点空间", "playlist_relax"),
-            ("放松舒缓", "舒缓节奏，放松身心", "category_light"),
-            ("安静专注", "纯音乐与轻旋律，适合专注", "category_instrumental"),
-            ("释放情绪", "用更有力量的节奏释放压力", "category_rock"),
-            ("夜晚助眠", "安静氛围，适合睡前聆听", "playlist_night")
-        ]
-        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 20) {
-            ForEach(items, id: \.0) { item in
-                Button { onOpenPlaylist(item.0) } label: {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Image(item.2).resizable().scaledToFill()
-                            .frame(height: 126).frame(maxWidth: .infinity).clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(.white.opacity(0.16), lineWidth: 0.8))
-                        Text(item.0).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
-                        Text(item.1).font(.system(size: 11)).foregroundStyle(MusicXTheme.muted).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                    }.frame(maxWidth: .infinity, alignment: .leading)
-                }.buttonStyle(.plain)
-            }
-        }
+        playlistCards(imageHeight: 126, spacing: 20)
     }
 
     private var featuredPlaylistGrid: some View {
-        let items: [(String, String, String)] = [
-            ("本周编辑精选", "近期值得收藏的好歌", "featured_playlist"),
-            ("华语流行精选", "熟悉的声音与新鲜旋律", "category_chinese_pop"),
-            ("经典金曲精选", "历久弥新的经典作品", "category_classic"),
-            ("独立音乐精选", "发现不一样的音乐表达", "category_singers"),
-            ("影视原声精选", "从电影与剧集中寻找旋律", "category_instrumental"),
-            ("通勤驾驶精选", "陪伴每一段路程", "playlist_drive")
-        ]
-        return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-            ForEach(items, id: \.0) { item in
-                Button { onOpenPlaylist(item.0) } label: {
+        playlistCards(imageHeight: 118, spacing: 14)
+    }
+
+    private func playlistCards(imageHeight: CGFloat, spacing: CGFloat) -> some View {
+        let artworkNames = ["featured_playlist", "category_chinese_pop", "category_classic", "category_singers", "category_instrumental", "playlist_drive"]
+        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: spacing) {
+            ForEach(Array(playlists.enumerated()), id: \.element.id) { index, playlist in
+                Button { onOpenPlaylist(playlist) } label: {
                     VStack(alignment: .leading, spacing: 8) {
-                        Image(item.2).resizable().scaledToFill()
-                            .frame(height: 118).frame(maxWidth: .infinity).clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(.white.opacity(0.18), lineWidth: 0.8))
-                        Text(item.0).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
-                        Text(item.1).font(.system(size: 11)).foregroundStyle(MusicXTheme.muted).lineLimit(1)
+                        ZStack {
+                            if let url = playlist.artworkURL {
+                                AsyncImage(url: url) { phase in
+                                    if let image = phase.image { image.resizable().scaledToFill() }
+                                    else { Image(artworkNames[index % artworkNames.count]).resizable().scaledToFill() }
+                                }
+                            } else {
+                                Image(artworkNames[index % artworkNames.count]).resizable().scaledToFill()
+                            }
+                        }
+                        .frame(height: imageHeight).frame(maxWidth: .infinity).clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(.white.opacity(0.16), lineWidth: 0.8))
+                        Text(playlist.name).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white).lineLimit(1)
+                        Text("\(playlist.trackCount ?? 0) 首 · \(playlist.creator ?? "酷我音乐")")
+                            .font(.system(size: 11)).foregroundStyle(MusicXTheme.muted).lineLimit(1)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }.buttonStyle(.plain)
             }
         }
     }
-
     private var albumGrid: some View {
         let items: [(String, String, String)] = [
             ("DUO", "陈奕迅", "album_01"),
@@ -514,9 +486,32 @@ struct MusicDiscoveryPage: View {
     }
 
     @MainActor
+    private func loadRecommendedPlaylists() async {
+        guard playlists.isEmpty else { return }
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            let result = try await service.recommendedPlaylists(count: 6)
+            guard !Task.isCancelled else { return }
+            playlists = Array(result.prefix(6))
+            if playlists.isEmpty { errorMessage = "洛雪暂时没有返回歌单" }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    @MainActor
     private func loadSongs() async {
-        if case .playlists = route { songs = []; return }
-        if case .featuredPlaylists = route { songs = []; return }
+        if case .playlists = route {
+            await loadRecommendedPlaylists()
+            songs = []
+            return
+        }
+        if case .featuredPlaylists = route {
+            await loadRecommendedPlaylists()
+            songs = []
+            return
+        }
         if case .albums = route { songs = []; return }
         if isChartRoute { await loadChart(selectedChart, showInitialLoading: true); return }
         isLoading = true
@@ -531,8 +526,8 @@ struct MusicDiscoveryPage: View {
                 result = try await service.toplist("新歌榜", count: 50)
             case .album:
                 result = try await service.search(keyword: query, source: .netease, page: 1, count: 50, albumOnly: true)
-            case .playlist:
-                result = try await service.playlistTracks(keyword: query, count: 50)
+            case .playlist(let playlist):
+                result = try await service.playlistTracks(playlist, count: 50)
             default:
                 result = try await service.search(keyword: query, source: .netease, page: 1, count: 30, albumOnly: false)
             }

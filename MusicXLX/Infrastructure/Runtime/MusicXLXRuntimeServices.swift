@@ -217,19 +217,50 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
         }
     }
 
-    // LX user-api scripts expose playback/metadata actions, not catalog search.
-    // Keep catalog discovery explicitly unavailable until a separate provider
-    // contract is implemented; never synthesize search or playlist results.
+    // Catalog discovery is delegated to independent catalog providers.
+    // LX resolver scripts are deliberately not queried for search/playlist data.
     func search(keyword: String, source: MusicSource, page: Int = 1, count: Int = 50, albumOnly: Bool = false) async throws -> [MusicSong] {
-        throw MusicXLXRuntimeError.catalogUnavailable("当前洛雪音源协议不提供歌曲搜索接口，目录搜索模块尚未接入。")
+        guard let provider = MusicCatalogRegistry.shared.provider(
+            for: source, requiring: .songSearch
+        ) else {
+            throw MusicXLXRuntimeError.catalogUnavailable("\(source.displayName) 的目录搜索 Provider 尚未注册。")
+        }
+        return try await provider.searchSongs(keyword: keyword, source: source, page: page, count: count)
     }
 
     func playlistTracks(keyword: String, count: Int) async throws -> [MusicSong] {
-        throw MusicXLXRuntimeError.catalogUnavailable("当前洛雪音源协议不提供歌单曲目接口，目录服务尚未接入。")
+        let sources = [MusicSource.netease, .qq, .kuwo, .kugou, .migu, .qishui]
+        var failures: [String] = []
+        for source in sources {
+            guard let provider = MusicCatalogRegistry.shared.provider(
+                for: source, requiring: .playlistSearch.union(.playlistDetail)
+            ) else { continue }
+            do {
+                let playlists = try await provider.searchPlaylists(
+                    keyword: keyword, source: source, page: 1, count: 5
+                )
+                guard let playlist = playlists.first else { continue }
+                return try await provider.playlistTracks(playlist, page: 1, count: count)
+            } catch {
+                failures.append("\(source.displayName)：\(error.localizedDescription)")
+            }
+        }
+        let detail = failures.isEmpty ? "尚无已注册的歌单目录 Provider。" : failures.joined(separator: "；")
+        throw MusicXLXRuntimeError.catalogUnavailable("无法获取歌单「\(keyword)」：\(detail)")
     }
 
     func toplist(_ chartName: String, count: Int) async throws -> [MusicSong] {
-        throw MusicXLXRuntimeError.catalogUnavailable("当前洛雪音源协议不提供排行榜接口，目录服务尚未接入。")
+        let source = MusicSource.netease
+        guard let provider = MusicCatalogRegistry.shared.provider(
+            for: source, requiring: .charts
+        ) else {
+            throw MusicXLXRuntimeError.catalogUnavailable("排行榜目录 Provider 尚未注册。")
+        }
+        let chart = MusicChart(
+            id: chartName, source: source, name: chartName,
+            description: nil, artworkURL: nil
+        )
+        return try await provider.toplist(chart, page: 1, count: count)
     }
 
     private func invoke(

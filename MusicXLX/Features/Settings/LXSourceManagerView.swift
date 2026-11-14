@@ -149,7 +149,23 @@ struct LXSourceManagerView: View {
             guard let script = String(data: data, encoding: .utf8) else {
                 throw NSError(domain: "LXSourceImport", code: 1, userInfo: [NSLocalizedDescriptionKey: "文件不是有效的 UTF-8 JavaScript 文本。"])
             }
-            let metadata = LXSourceScriptMetadataParser.parse(script, fileName: url.lastPathComponent)
+            let parsed = LXSourceScriptMetadataParser.parse(script, fileName: url.lastPathComponent)
+            let metadata: LXSourceStore.Metadata
+            if services.installedSources().contains(where: { $0.metadata.id == parsed.id }) {
+                let suffix = String(UUID().uuidString.prefix(8))
+                let uniqueID = String(parsed.id.prefix(52)) + "-" + suffix
+                metadata = LXSourceStore.Metadata(
+                    id: uniqueID,
+                    name: parsed.name,
+                    description: parsed.description,
+                    version: parsed.version,
+                    author: parsed.author,
+                    homepage: parsed.homepage,
+                    updatedAt: parsed.updatedAt
+                )
+            } else {
+                metadata = parsed
+            }
             _ = try services.importSource(script: script, metadata: metadata)
             statusMessage = "已导入「\(metadata.name)」，默认处于停用状态。"
             isErrorPresented = true

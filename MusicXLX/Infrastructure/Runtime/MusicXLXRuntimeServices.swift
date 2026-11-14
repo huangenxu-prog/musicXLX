@@ -46,6 +46,7 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
 
     private let sourceManager: LXSourceManager?
     private let storeError: String?
+    private let kuwoPlaylistCatalog = LXKuwoPlaylistCatalog()
 
     private init() {
         do {
@@ -226,6 +227,16 @@ final class MusicXLXRuntimeServices: MusicXLXRuntimeServing {
             throw MusicXLXRuntimeError.catalogUnavailable("\(source.displayName) 的目录搜索 Provider 尚未注册。")
         }
         return try await provider.searchSongs(keyword: keyword, source: source, page: page, count: count)
+    }
+
+    func recommendedPlaylists(count: Int) async throws -> [MusicPlaylist] {
+        // LX 1.9.2 opens the song-list page on Kuwo, with the default
+        // empty category and "new" sort. Keep that default instead of merging providers.
+        try await kuwoPlaylistCatalog.recommendedPlaylists(count: count)
+    }
+
+    func playlistTracks(_ playlist: MusicPlaylist, count: Int) async throws -> [MusicSong] {
+        try await kuwoPlaylistCatalog.playlistTracks(playlist, count: count)
     }
 
     func playlistTracks(keyword: String, count: Int) async throws -> [MusicSong] {

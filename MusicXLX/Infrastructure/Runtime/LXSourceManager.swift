@@ -75,6 +75,26 @@ final class LXSourceManager {
         registrations[id]
     }
 
+    func enabledSourceIDs(for platform: String) -> [String] {
+        store.list()
+            .filter { $0.isEnabled && registrations[$0.metadata.id]?.sources[platform] != nil }
+            .map { $0.metadata.id }
+    }
+
+    func restoreEnabledSources() {
+        for entry in store.list() where entry.isEnabled {
+            do {
+                try load(entry: entry) { result in
+                    if case .failure(let error) = result {
+                        NSLog("[MusicXLX:LX] restore failed (%@): %@", entry.metadata.id, error.localizedDescription)
+                    }
+                }
+            } catch {
+                NSLog("[MusicXLX:LX] restore failed (%@): %@", entry.metadata.id, error.localizedDescription)
+            }
+        }
+    }
+
     func performAction(sourceID: String, platform: String, action: String, info: [String: Any], completion: @escaping (Result<[String: Any], Error>) -> Void) {
         guard let runtime = runtimes[sourceID] else {
             completion(.failure(LXSourceStore.StoreError.sourceNotFound(sourceID)))

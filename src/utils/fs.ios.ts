@@ -97,7 +97,7 @@ export const stat = async(path: string): Promise<FileType> => {
     path: item.path,
     name: getName(item.path),
     size: Number(item.size),
-    mtime: item.mtime,
+    mtime: new Date(item.mtime),
     isFile: () => item.isFile(),
     isDirectory: () => item.isDirectory(),
   })
@@ -118,25 +118,25 @@ export const moveFile = async(fromPath: string, toPath: string): Promise<boolean
 
 export const gzipFile = async(fromPath: string, toPath: string): Promise<void> => {
   const source = Buffer.from(await RNFS.readFile(fromPath, 'base64'), 'base64')
-  const compressed = pako.gzip(source) as Uint8Array
+  const compressed = pako.gzip(source)
   await RNFS.writeFile(toPath, Buffer.from(Array.from(compressed)).toString('base64'), 'base64')
 }
 
 export const unGzipFile = async(fromPath: string, toPath: string): Promise<void> => {
   const source = Buffer.from(await RNFS.readFile(fromPath, 'base64'), 'base64')
-  const decompressed = pako.ungzip(source) as Uint8Array
+  const decompressed = pako.ungzip(source)
   await RNFS.writeFile(toPath, Buffer.from(Array.from(decompressed)).toString('base64'), 'base64')
 }
 
 export const gzipString = async(data: string, encoding: Encoding = 'utf8'): Promise<string> => {
   const source = Buffer.from(data, encoding)
-  const compressed = pako.gzip(source) as Uint8Array
+  const compressed = pako.gzip(source)
   return Buffer.from(Array.from(compressed)).toString('base64')
 }
 
 export const unGzipString = async(data: string, encoding: Encoding = 'utf8'): Promise<string> => {
   const source = Buffer.from(data, 'base64')
-  const decompressed = Buffer.from(Array.from(pako.ungzip(source) as Uint8Array))
+  const decompressed = Buffer.from(Array.from(pako.ungzip(source)))
   return decompressed.toString(encoding)
 }
 

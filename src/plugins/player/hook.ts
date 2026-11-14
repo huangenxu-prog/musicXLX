@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import TrackPlayer, { State, Event } from 'react-native-track-player'
+import BackgroundTimer from 'react-native-background-timer'
 
 /** Get current playback state and subsequent updatates  */
 export const usePlaybackState = () => {
@@ -119,11 +120,11 @@ export function useBufferProgress() {
     let isUnmounted = false
     let preBuffered = 0
     let duration = 0
-    let interval: NodeJS.Timer | null = null
+    let interval: number | null = null
 
     const clearItv = () => {
       if (!interval) return
-      clearInterval(interval)
+      BackgroundTimer.clearInterval(interval)
       interval = null
     }
     const updateBuffer = async() => {
@@ -161,7 +162,7 @@ export function useBufferProgress() {
           // console.log('state', 'Buffering')
           clearItv()
           duration = 0
-          interval = setInterval(updateBuffer, 1000)
+          interval = BackgroundTimer.setInterval(updateBuffer, 1000)
           void updateBuffer()
           break
         // case State.Connecting:

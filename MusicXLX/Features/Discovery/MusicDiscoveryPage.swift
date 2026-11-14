@@ -4,6 +4,7 @@ enum MusicDiscoveryRoute: Identifiable {
     case daily, playlists, featuredPlaylists, albums, charts, newReleases
     case chart(String)
     case playlist(MusicPlaylist)
+    case playlistSearch(String)
     case album(title: String, artist: String)
     var id: String {
         switch self {
@@ -15,6 +16,7 @@ enum MusicDiscoveryRoute: Identifiable {
         case .newReleases: "new-releases"
         case .chart(let name): "chart-\(name)"
         case .playlist(let playlist): "playlist-\(playlist.id)"
+        case .playlistSearch(let name): "playlist-search-\(name)"
         case .album(let title, let artist): "album-\(title)-\(artist)"
         }
     }
@@ -78,6 +80,7 @@ struct MusicDiscoveryPage: View {
         case .charts, .chart: "排行榜"
         case .newReleases: "新歌速递"
         case .playlist(let playlist): playlist.name
+        case .playlistSearch(let name): name
         case .album(let title, _): title
         }
     }
@@ -91,6 +94,13 @@ struct MusicDiscoveryPage: View {
         case .newReleases: "新歌"
         case .playlist:
             ""
+        case .playlistSearch(let name):
+            switch name {
+            case "午后放松": "放松"
+            case "深夜独白": "助眠"
+            case "车载必听": "通勤"
+            default: name
+            }
         case .album(let title, let artist): "\(title) \(artist)"
         }
     }
@@ -113,6 +123,7 @@ struct MusicDiscoveryPage: View {
                     case .charts, .chart: chartIntro
                     case .newReleases: newReleasesHeader
                     case .playlist(let playlist): detailBanner(playlist.name, subtitle: "洛雪原版歌单 · \(playlist.creator ?? "酷我音乐")")
+                    case .playlistSearch(let name): detailBanner(name, subtitle: playlistSubtitle(for: name))
                     case .album(let title, let artist): albumBanner(title: title, artist: artist)
                     }
                     if case .playlists = route {

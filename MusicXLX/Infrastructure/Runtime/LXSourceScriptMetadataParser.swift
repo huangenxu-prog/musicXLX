@@ -38,8 +38,8 @@ enum LXSourceScriptMetadataParser {
 
     private static func sanitizedIdentifier(_ value: String) -> String {
         let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
-        let scalars = value.unicodeScalars.map { allowed.contains($0) ? Character($0) : "_" }
-        let result = String(scalars).trimmingCharacters(in: CharacterSet(charactersIn: "._-"))
+        let filtered = value.unicodeScalars.map { allowed.contains($0) ? String($0) : "_" }.joined()
+        let result = filtered.trimmingCharacters(in: CharacterSet(charactersIn: "._-"))
         return String((result.isEmpty ? "LXSource" : result).prefix(64))
     }
 }

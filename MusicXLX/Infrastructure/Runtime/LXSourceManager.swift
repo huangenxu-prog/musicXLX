@@ -101,7 +101,7 @@ final class LXSourceManager {
             return
         }
         guard registrations[sourceID]?.sources[platform] != nil else {
-            completion(.failure(LXJavaScriptRuntime.RuntimeError.javascript("当前脚本未注册平台：\\(platform)")))
+            completion(.failure(LXJavaScriptRuntime.RuntimeError.javascript("当前脚本未注册平台：\(platform)")))
             return
         }
         runtime.performSourceAction(source: platform, action: action, info: info, completion: completion)

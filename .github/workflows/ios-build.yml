@@ -21,6 +21,9 @@ on:
       - "src/**"
       - "package.json"
       - "package-lock.json"
+      - "react-native.config.js"
+      - "babel.config.js"
+      - "tsconfig.json"
       - ".github/workflows/ios-build.yml"
 
 concurrency:
@@ -31,9 +34,9 @@ permissions:
   contents: read
 
 jobs:
-  build-ios:
-    runs-on: macos-15
-    timeout-minutes: 45
+  validate-js:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout target branch
         uses: actions/checkout@v4
@@ -65,6 +68,25 @@ jobs:
             --bundle-output "$RUNNER_TEMP/main.jsbundle" \
             --assets-dest "$RUNNER_TEMP/ios-assets"
 
+  build-ios:
+    needs: validate-js
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: integration/musicx-experience-cache
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
       - name: Install CocoaPods dependencies
         run: pod install --project-directory=ios
 
@@ -73,7 +95,7 @@ jobs:
           xcodebuild \
             -workspace ios/LxMusicMobile.xcworkspace \
             -scheme LxMusicMobile \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \

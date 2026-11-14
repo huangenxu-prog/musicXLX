@@ -13,8 +13,8 @@ export const temporaryDirectoryPath = cacheRoot
 export const externalStorageDirectoryPath = documentRoot
 export const privateStorageDirectoryPath = documentRoot
 
-const getName = (path: string) => path.replace(/\\/+$/, '').split('/').pop() ?? path
-const getParent = (path: string) => path.replace(/\\/+$/, '').split('/').slice(0, -1).join('/') || '/'
+const getName = (path: string) => path.replace(/\/+$/, '').split('/').pop() ?? path
+const getParent = (path: string) => path.replace(/\/+$/, '').split('/').slice(0, -1).join('/') || '/'
 const getMimeType = (path: string) => {
   const extension = extname(getName(path)).toLowerCase()
   const types: Record<string, string> = {
@@ -68,9 +68,7 @@ export const removeManagedFolder = async(_path: string): Promise<void> => {}
 export const getManagedFolders = async(): Promise<string[]> => [documentRoot]
 export const getPersistedUriList = async(): Promise<string[]> => [documentRoot]
 
-// The Android Storage Access Framework has no direct iOS equivalent. Until the
-// native UIDocumentPicker bridge is added, the system picker deliberately
-// rejects so the app can fall back to its in-app Documents browser.
+// iOS uses UIDocumentPicker to copy selected files into the app sandbox.
 export const selectFile = async(_options: OpenDocumentOptions): Promise<FileType> => {
   const picker = NativeModules.LXDocumentPicker
   if (!picker?.pickFile) throw new Error('iOS document picker is not installed yet')

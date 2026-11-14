@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 import { isInitialized, initial as playerInitial, isEmpty, setPause, setPlay, setResource, setStop, initTrackInfo } from '@/plugins/player'
 import {
   setStatusText,
@@ -229,7 +230,8 @@ const debouncePlay = debounceBackgroundTimer((musicInfo: LX.Player.PlayMusic) =>
 const handlePlay = async() => {
   if (!isInitialized()) {
     await checkNotificationPermission()
-    void checkIgnoringBatteryOptimization()
+    // Battery-optimization exemptions are Android-only; do not show that prompt on iOS.
+    if (Platform.OS === 'android') void checkIgnoringBatteryOptimization()
     await playerInitial({
       volume: settingState.setting['player.volume'],
       playRate: settingState.setting['player.playbackRate'],

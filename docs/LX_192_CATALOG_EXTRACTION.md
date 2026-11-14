@@ -102,6 +102,18 @@ The provider crypto imports are not generic asynchronous-only APIs. The original
 
 The supplied LX source archive includes the Android implementation in android/app/src/main/java/cn/toside/music/mobile/crypto/{CryptoModule,AES,RSA}.java. AES takes Base64-encoded input/key/IV, truncates or zero-pads the IV to 16 bytes for the IV-taking overload, and emits unwrapped Base64 ciphertext; decryption emits UTF-8. The Java implementation catches cipher exceptions and returns an empty string. RSA takes Base64 plaintext and X.509 SubjectPublicKeyInfo public-key DER, then emits unwrapped Base64 ciphertext. These semantics are the compatibility reference; do not substitute WebCrypto defaults without matching input/output encoding, padding, and RSA behavior. The current MusicXLX JavaScriptCore bridge still has no crypto exports, so NetEase and QQ signed catalog requests cannot yet be considered runnable.
 
+## MusicXLX native crypto adapter implementation
+
+Added `MusicXLX/Infrastructure/Catalog/LXCatalogCryptoBridge.swift` and installed it when the JavaScriptCore context is created. It currently exposes `LXNativeCrypto.aesEncryptSync`, `aesDecryptSync`, `rsaEncryptSync`, `sha1`, and `md5`. The JS import adapters are `Resources/LXRuntime/lx-native-crypto-shim.js` (alias target for `@/utils/nativeModules/crypto`) and `lx-quick-md5-shim.js` (alias target for `react-native-quick-md5`).
+
+Implementation details:
+- AES uses CommonCrypto and matches the Android source's Base64 input/output contract. The literal mode `AES` is treated as ECB + PKCS7 padding, equivalent to Android's default AES/ECB/PKCS5Padding for AES's 16-byte block size. CBC IV bytes are zero-padded/truncated to 16 bytes as in the Android source.
+- RSA public-key input is X.509 SubjectPublicKeyInfo DER; the adapter extracts the embedded PKCS#1 key before importing it through Security. It maps `RSA/ECB/NoPadding` to the platform raw RSA algorithm and OAEP-SHA1 to the platform OAEP-SHA1 algorithm.
+- SHA-1 and MD5 return lowercase hexadecimal digests over UTF-8 bytes. MD5 is needed by NetEase eAPI and other provider signatures.
+- The JavaScript shim exposes only catalog-used synchronous methods; unsupported key-generation/decryption/async variants fail explicitly rather than returning placeholder values.
+
+Status: source and bridge wiring are committed, but no Xcode compile or cryptographic test vectors have been run yet. In particular, raw RSA interoperability, Security key import, CommonCrypto mode parity, and the React Native MD5/Base64 edge cases remain unverified on iOS. Do not yet mark NetEase/QQ/Kuwo provider requests as live-tested.
+
 ## Transport compatibility contract
 
 The original `httpFetch(url, options)` returns an object with:

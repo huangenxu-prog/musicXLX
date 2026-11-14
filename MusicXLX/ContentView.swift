@@ -38,6 +38,15 @@ struct ContentView: View {
                         .buttonStyle(.bordered)
                     }
 
+                    if let track = player.currentTrack {
+                        Text("\(track.title) · \(track.artist)")
+                            .font(.subheadline)
+                            .lineLimit(1)
+                        Text("来源：\(track.source)  音质：\(track.quality)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
                     Text(player.statusText)
                         .font(.caption)
                         .foregroundStyle(.secondary)

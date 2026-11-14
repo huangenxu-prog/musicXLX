@@ -8,18 +8,32 @@ final class AudioPlayer: ObservableObject {
     @Published private(set) var currentTime: TimeInterval = 0
     @Published private(set) var duration: TimeInterval = 0
     @Published private(set) var statusText = "等待播放"
+    @Published private(set) var currentTrack: ResolvedTrack?
 
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var itemStatusObserver: NSKeyValueObservation?
 
     func play(url: URL) {
+        let track = ResolvedTrack(
+            url: url,
+            title: url.lastPathComponent.isEmpty ? "测试音频" : url.lastPathComponent,
+            artist: "",
+            source: "manual-test",
+            quality: "unknown"
+        )
+        play(track: track)
+    }
+
+    func play(track: ResolvedTrack) {
+        let url = track.url
         guard url.scheme == "https" || url.scheme == "http" else {
             statusText = "播放地址必须是 HTTP 或 HTTPS"
             return
         }
 
         tearDownObservers()
+        currentTrack = track
         let item = AVPlayerItem(url: url)
         let nextPlayer = AVPlayer(playerItem: item)
         player = nextPlayer
@@ -84,6 +98,7 @@ final class AudioPlayer: ObservableObject {
         isPlaying = false
         currentTime = 0
         duration = 0
+        currentTrack = nil
         statusText = "已停止"
     }
 

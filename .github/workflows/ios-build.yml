@@ -2,6 +2,9 @@ name: iOS Build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - integration/musicx-experience-cache
 
 jobs:
   build:
@@ -12,6 +15,11 @@ jobs:
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Generate app icon
+        run: |
+          mkdir -p MusicXLX/Assets.xcassets/AppIcon.appiconset
+          swift scripts/generate-app-icon.swift MusicXLX/Assets.xcassets/AppIcon.appiconset/AppIcon.png
 
       - name: Install XcodeGen
         run: brew install xcodegen

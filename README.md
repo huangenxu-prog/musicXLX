@@ -10,13 +10,13 @@ MusicXLX is a standalone iOS music player. Its UI and playback experience are mi
 - Original disk cache and catalog snapshot stores are retained.
 - Search, chart, playlist, metadata, and playback calls now target MusicXLXRuntimeServices.
 - Legacy GDStudio search/metadata and native URL resolver calls are not used by the migrated UI.
-- The LX JavaScriptCore runtime adapter and source-management UI are still pending; the current service facade intentionally reports that the runtime is not installed.
+- A JavaScriptCore LX runtime adapter now provides isolated per-script contexts, serialized execution, LX initialization handshake, HTTP request/cancel/response bridging, timer callbacks, and Base64/MD5/AES/RSA helpers.\n- LX preload platform registration is dynamic but constrained to validated platform IDs, supported actions, and supported quality values; community IDs such as `qs` are not hardcoded out.\n- LXSourceStore persists raw imported scripts separately from metadata and enabled state. LXSourceManager provides import, enable, disable, reload, update, remove, and provider-action routing.\n- The runtime manager is not yet connected to MusicXLXRuntimeServices or the UI. Catalog search, playlists, charts, and end-to-end playback are not yet available through the new runtime.
 
 ## Architecture boundary
 
 - SwiftUI owns presentation and interaction.
 - MusicXLXRuntimeServices is the UI-facing contract for catalog, metadata, lyrics, and playback URL resolution.
-- LX JavaScript source scripts resolve provider resources; they do not control AVPlayer.
+- LX JavaScript source scripts resolve provider resources; they do not control AVPlayer.\n- Imported script contents are stored unchanged; each enabled script receives its own JavaScriptCore context.
 - PlayerStore owns native playback, lock-screen controls, audio-session lifecycle, and playback diagnostics.
 - MusicCache and MusicCatalogStore own reusable cache and catalog snapshots.
 

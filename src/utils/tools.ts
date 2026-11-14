@@ -1,4 +1,4 @@
-import { Platform, ToastAndroid, BackHandler, Linking, Dimensions, Alert, Appearance, PermissionsAndroid, AppState, StyleSheet, type ScaledSize } from 'react-native'
+import { Platform, ToastAndroid, BackHandler, Linking, Dimensions, Alert, Appearance, PermissionsAndroid, AppState, StyleSheet, NativeModules, type ScaledSize } from 'react-native'
 // import ExtraDimensions from 'react-native-extra-dimensions-android'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { storageDataPrefix } from '@/config/constant'
@@ -26,7 +26,7 @@ export const getDeviceLanguage = async() => {
 
 export const isAndroid = Platform.OS === 'android'
 // @ts-expect-error
-export const osVer = Platform.constants.Release as string
+export const osVer = Platform.OS === 'android' ? Platform.constants.Release as string : String(Platform.Version)
 
 export const isActive = () => AppState.currentState == 'active'
 
@@ -56,9 +56,10 @@ export const TEMP_FILE_PATH = temporaryDirectoryPath + '/tempFile'
 //   // return windowSize
 // }
 
-export const checkStoragePermissions = async() => PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE)
+export const checkStoragePermissions = async() => Platform.OS === 'ios' ? true : PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE)
 
 export const requestStoragePermission = async() => {
+  if (Platform.OS === 'ios') return true
   const isGranted = await checkStoragePermissions()
   if (isGranted) return isGranted
 
@@ -105,6 +106,10 @@ export const requestStoragePermission = async() => {
  * @param position 位置
  */
 export const toast = (message: string, duration: 'long' | 'short' = 'short', position: 'top' | 'center' | 'bottom' = 'bottom') => {
+  if (Platform.OS === 'ios') {
+    NativeModules.LXToastModule?.show?.(message, duration, position)
+    return
+  }
   let _duration
   switch (duration) {
     case 'long':
@@ -147,7 +152,7 @@ export const assertApiSupport = (source: LX.Source): boolean => {
 // }
 
 export const exitApp = () => {
-  BackHandler.exitApp()
+  if (Platform.OS === 'android') BackHandler.exitApp()
 }
 
 export const handleSaveFile = async(path: string, data: any) => {

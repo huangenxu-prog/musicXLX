@@ -36,7 +36,12 @@ final class LXSourceManager {
     func enableSource(id: String, completion: @escaping (Result<LXJavaScriptRuntime.RegisteredSource, Error>) -> Void) {
         do {
             let entry = try store.setEnabled(true, id: id)
-            try load(entry: entry, completion: completion)
+            try load(entry: entry) { result in
+                if case .failure = result {
+                    _ = try? self.store.setEnabled(false, id: id)
+                }
+                completion(result)
+            }
         } catch {
             completion(.failure(error))
         }

@@ -343,8 +343,8 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
    *                 }
    */
   const handleInit = (info) => {
-    if (!info) {
-      nativeCall(NATIVE_EVENTS_NAMES.init, { info: null, status: false, errorMessage: 'Missing required parameter init info' })
+    if (!info || typeof info !== 'object' || !info.sources || typeof info.sources !== 'object') {
+      nativeCall(NATIVE_EVENTS_NAMES.init, { info: null, status: false, errorMessage: 'Missing required parameter init sources' })
       // sendMessage(NATIVE_EVENTS_NAMES.init, false, null, typeof info.message === 'string' ? info.message.substring(0, 100) : '')
       return
     }
@@ -375,6 +375,15 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     } catch (error) {
       // console.log(error)
       nativeCall(NATIVE_EVENTS_NAMES.init, { info: null, status: false, errorMessage: error.message })
+      return
+    }
+    const playableSources = Object.entries(sourceInfo.sources).filter(([, source]) => source.actions.includes('musicUrl') && source.qualitys.length > 0)
+    if (playableSources.length === 0) {
+      nativeCall(NATIVE_EVENTS_NAMES.init, {
+        info: sourceInfo,
+        status: false,
+        errorMessage: 'Custom source declares no supported musicUrl action with a playable quality',
+      })
       return
     }
     nativeCall(NATIVE_EVENTS_NAMES.init, { info: sourceInfo, status: true })

@@ -251,8 +251,10 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     requestQueue.delete(requestKey)
     targetRequest.requestInfo.aborted = true
     // if (targetRequest.timeout) clearTimeout(targetRequest.timeout)
-    if (error == null) targetRequest.callback(null, response)
-    else targetRequest.callback(new Error(error), null)
+    if (error == null) {
+      if (response && Array.isArray(response.body)) response.body = new Uint8Array(response.body)
+      targetRequest.callback(null, response)
+    } else targetRequest.callback(new Error(error), null)
   }
 
   const handleRequest = ({ requestKey, data }) => {

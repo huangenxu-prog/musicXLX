@@ -16,20 +16,21 @@ export default async(setting: LX.AppSetting) => {
     if (!target) return
     scriptRequestMap.delete(requestKey)
     target.abort()
+    // The JS preload retains the callback until it receives a response.
+    // Always settle it on cancellation so requests cannot remain pending.
+    sendAction('response', { error: message, requestKey, response: null })
   }
   const sendScriptRequest = (requestKey: string, url: string, options: RequestParams['options']) => {
     let req = fetchData(url, options)
     req.request.then(response => {
-      // Avoid logging request URLs, headers, tokens, or response bodies.
-      sendAction('response', {
-        error: null,
-        requestKey,
-        response,
-      })
+      // Ignore late fetch completions after the source cancelled its request.
+      if (!scriptRequestMap.has(requestKey)) return
+      sendAction('response', { error: null, requestKey, response })
     }).catch(err => {
+      if (!scriptRequestMap.has(requestKey)) return
       log.r_error('[user-api] network request failed:', err instanceof Error ? err.message : String(err))
       sendAction('response', {
-        error: err.message,
+        error: err instanceof Error ? err.message : String(err),
         requestKey,
         response: null,
       })

@@ -21,23 +21,34 @@ export default async(setting: LX.AppSetting) => {
     sendAction('response', { error: message, requestKey, response: null })
   }
   const sendScriptRequest = (requestKey: string, url: string, options: RequestParams['options']) => {
-    let req = fetchData(url, options)
-    req.request.then(response => {
-      // Ignore late fetch completions after the source cancelled its request.
-      if (!scriptRequestMap.has(requestKey)) return
-      sendAction('response', { error: null, requestKey, response })
-    }).catch(err => {
-      if (!scriptRequestMap.has(requestKey)) return
-      log.r_error('[user-api] network request failed:', err instanceof Error ? err.message : String(err))
+    // Do not log the URL: source endpoints may contain tokens or signed queries.
+    log.info('[user-api] HTTP request started: method=' + (options?.method ?? 'get') + ', binary=' + String(options?.binary === true))
+    try {
+      const req = fetchData(url, options)
+      scriptRequestMap.set(requestKey, req)
+      req.request.then(response => {
+        if (!scriptRequestMap.has(requestKey)) return
+        log.info('[user-api] HTTP response: status=' + response.statusCode + ', bodyType=' + (Array.isArray(response.body) ? 'array' : typeof response.body))
+        sendAction('response', { error: null, requestKey, response })
+      }).catch(err => {
+        if (!scriptRequestMap.has(requestKey)) return
+        log.r_error('[user-api] network request failed:', err instanceof Error ? err.message : String(err))
+        sendAction('response', {
+          error: err instanceof Error ? err.message : String(err),
+          requestKey,
+          response: null,
+        })
+      }).finally(() => {
+        scriptRequestMap.delete(requestKey)
+      })
+    } catch (err) {
+      log.r_error('[user-api] HTTP bridge setup failed:', err instanceof Error ? err.message : String(err))
       sendAction('response', {
         error: err instanceof Error ? err.message : String(err),
         requestKey,
         response: null,
       })
-    }).finally(() => {
-      scriptRequestMap.delete(requestKey)
-    })
-    scriptRequestMap.set(requestKey, req)
+    }
   }
   const sendUserApiRequest = async(data: LX.UserApi.UserApiRequestParams) => {
     const handleApiUpdate = () => {

@@ -358,14 +358,18 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     }
     try {
       for (const source of allSources) {
-        const userSource = info.sources[source]
+        const userSource = info.sources?.[source]
         if (!userSource || userSource.type !== 'music') continue
-        const qualitys = supportQualitys[source]
-        const actions = supportActions[source]
+        const qualitys = supportQualitys[source] || []
+        const actions = supportActions[source] || []
+        // An incomplete declaration for one platform must not invalidate
+        // every other usable platform in the same custom source script.
+        const declaredActions = Array.isArray(userSource.actions) ? userSource.actions : []
+        const declaredQualitys = Array.isArray(userSource.qualitys) ? userSource.qualitys : []
         sourceInfo.sources[source] = {
           type: 'music',
-          actions: actions.filter(a => userSource.actions.includes(a)),
-          qualitys: qualitys.filter(q => userSource.qualitys.includes(q)),
+          actions: actions.filter(a => declaredActions.includes(a)),
+          qualitys: qualitys.filter(q => declaredQualitys.includes(q)),
         }
       }
     } catch (error) {

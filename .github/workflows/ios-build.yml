@@ -1,31 +1,7 @@
-name: iOS Simulator Build
+name: iOS Manual Build
 
 on:
-  push:
-    branches:
-      - integration/musicx-experience-cache
-    paths:
-      - "ios/**"
-      - "src/**"
-      - "package.json"
-      - "package-lock.json"
-      - "react-native.config.js"
-      - "babel.config.js"
-      - "tsconfig.json"
-      - ".github/workflows/ios-build.yml"
   workflow_dispatch:
-  pull_request:
-    branches:
-      - integration/musicx-experience-cache
-    paths:
-      - "ios/**"
-      - "src/**"
-      - "package.json"
-      - "package-lock.json"
-      - "react-native.config.js"
-      - "babel.config.js"
-      - "tsconfig.json"
-      - ".github/workflows/ios-build.yml"
 
 concurrency:
   group: ios-build-${{ github.run_id }}

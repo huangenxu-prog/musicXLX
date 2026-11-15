@@ -72,6 +72,22 @@ async function main() {
   }))
   assert.equal(shortCallbackBody, 'ok')
   assert.throws(() => sandbox.lx.request('https://example.com/no-callback'), /requires a callback/)
+  // Cancellation must be safe when the source invokes its abort handle twice.
+  let cancelledCallbackCount = 0
+  const abort = sandbox.lx.request('https://example.com/cancel', () => {
+    cancelledCallbackCount++
+  })
+  const pending = events.filter(e => e.action === 'request').at(-1)
+  abort()
+  abort()
+  const cancels = events.filter(e => e.action === 'cancelRequest' && e.data === pending.data.requestKey)
+  assert.equal(cancels.length, 1)
+  sandbox.__lx_native__('test-key', 'response', JSON.stringify({
+    requestKey: pending.data.requestKey,
+    error: 'request canceled',
+    response: null,
+  }))
+  assert.equal(cancelledCallbackCount, 0)
   console.log('iOS JS bridge contract tests passed')
 }
 main().catch(error => { console.error(error); process.exitCode = 1 })

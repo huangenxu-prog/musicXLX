@@ -1,9 +1,16 @@
-import { Dimensions, StatusBar } from 'react-native'
+import { Dimensions, Platform, StatusBar } from 'react-native'
 import { getWindowSize as getWindowSizeRaw } from './nativeModules/utils'
 // import { log } from './log'
 
 export type SizeHandler = (size: { width: number, height: number }) => void
 export const getWindowSize = async() => {
+  // React Native Dimensions reports iOS window dimensions in logical points.
+  // The native module may already return points, so dividing by the display
+  // scale again makes the entire interface several times too small.
+  if (Platform.OS === 'ios') {
+    const { width, height } = Dimensions.get('window')
+    return { width, height }
+  }
   return getWindowSizeRaw().then((size) => {
     const scale = Dimensions.get('window').scale
     size.width = size.width / scale

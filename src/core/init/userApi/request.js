@@ -21,24 +21,24 @@ const handleRequestData = async({
     Accept: 'application/json',
   }, headers)
   const contentTypeEntry = Object.entries(headers).find(([name]) => name.toLowerCase() === 'content-type')
-  if (method.toLocaleLowerCase() === 'post' && !contentTypeEntry) {
-    if (options.form) {
-      headers['Content-Type'] = 'application/x-www-form-urlencoded'
-      const formBody = []
-      for (let [key, value] of Object.entries(options.form)) {
-        let encodedKey = encodeURIComponent(key)
-        let encodedValue = encodeURIComponent(value)
-        formBody.push(`${encodedKey}=${encodedValue}`)
-      }
-      options.body = formBody.join('&')
-      delete options.form
-    } else if (options.formData) {
-      // Let fetch add the multipart boundary for FormData bodies.
-      options.body = options.formData
-      delete options.formData
-    } else {
-      headers['Content-Type'] = 'application/json'
+  // User source scripts may provide form fields with or without an explicit
+  // Content-Type. Always serialize them before passing the request to fetch.
+  if (options.form != null) {
+    if (!contentTypeEntry) headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    options.body = Object.entries(options.form)
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value == null ? '' : String(value))}`)
+      .join('&')
+    delete options.form
+  } else if (options.formData != null) {
+    // React Native fetch requires an actual FormData instance, not a plain object.
+    const formData = new global.FormData()
+    for (const [key, value] of Object.entries(options.formData)) {
+      formData.append(key, value)
     }
+    options.body = formData
+    delete options.formData
+  } else if (method.toLowerCase() === 'post' && !contentTypeEntry && options.body != null && typeof options.body !== 'string') {
+    headers['Content-Type'] = 'application/json'
   }
   const contentType = contentTypeEntry?.[1] ?? headers['Content-Type']
   if (typeof contentType === 'string' && contentType.toLowerCase().includes('application/json') && options.body != null && typeof options.body !== 'string') {

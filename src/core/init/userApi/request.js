@@ -41,7 +41,7 @@ const handleRequestData = async({
     }
   }
   const contentType = contentTypeEntry?.[1] ?? headers['Content-Type']
-  if (typeof contentType === 'string' && contentType.toLowerCase().includes('application/json') && options.body) {
+  if (typeof contentType === 'string' && contentType.toLowerCase().includes('application/json') && options.body != null && typeof options.body !== 'string') {
     options.body = JSON.stringify(options.body)
   }
 
@@ -67,7 +67,7 @@ const blobToBuffer = (blob) => {
   })
 }
 
-export const fetchData = (url, { timeout = 13_000, ...options }) => {
+export const fetchData = (url, { timeout = 13_000, ...options } = {}) => {
   // console.log('---start---', url)
 
   const controller = new global.AbortController()
@@ -84,7 +84,7 @@ export const fetchData = (url, { timeout = 13_000, ...options }) => {
       }).then(resp => (options.binary ? resp.blob() : resp.text()).then(text => {
         // console.log(options, headers, text)
         return {
-          headers: resp.headers.map,
+          headers: resp.headers?.map ?? Object.fromEntries(resp.headers?.entries?.() ?? []),
           body: text,
           statusCode: resp.status,
           statusMessage: resp.statusText,

@@ -88,39 +88,70 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     tagret.callback(...tagret.params)
   }
 
-  // 将字节数组解码为字符串（UTF-8）
+  // 将字节数组解码为 UTF-8，正确处理四字节字符及非法序列
   function bytesToString(bytes) {
     let result = ''
     let i = 0
     while (i < bytes.length) {
-      const byte = bytes[i]
-      if (byte < 128) {
-        result += String.fromCharCode(byte)
-        i++
-      } else if (byte >= 192 && byte < 224) {
-        result += String.fromCharCode(((byte & 31) << 6) | (bytes[i + 1] & 63))
-        i += 2
-      } else {
-        result += String.fromCharCode(((byte & 15) << 12) | ((bytes[i + 1] & 63) << 6) | (bytes[i + 2] & 63))
-        i += 3
+      const first = bytes[i] & 0xff
+      let codePoint = 0xfffd
+      let length = 1
+      if (first < 0x80) {
+        codePoint = first
+      } else if (first >= 0xc2 && first <= 0xdf && i + 1 < bytes.length) {
+        const second = bytes[i + 1] & 0xff
+        if ((second & 0xc0) === 0x80) {
+          codePoint = ((first & 0x1f) << 6) | (second & 0x3f)
+          length = 2
+        }
+      } else if (first >= 0xe0 && first <= 0xef && i + 2 < bytes.length) {
+        const second = bytes[i + 1] & 0xff
+        const third = bytes[i + 2] & 0xff
+        const validSecond = (second & 0xc0) === 0x80 &&
+          !(first === 0xe0 && second < 0xa0) &&
+          !(first === 0xed && second >= 0xa0)
+        if (validSecond && (third & 0xc0) === 0x80) {
+          codePoint = ((first & 0x0f) << 12) | ((second & 0x3f) << 6) | (third & 0x3f)
+          length = 3
+        }
+      } else if (first >= 0xf0 && first <= 0xf4 && i + 3 < bytes.length) {
+        const second = bytes[i + 1] & 0xff
+        const third = bytes[i + 2] & 0xff
+        const fourth = bytes[i + 3] & 0xff
+        const validSecond = (second & 0xc0) === 0x80 &&
+          !(first === 0xf0 && second < 0x90) &&
+          !(first === 0xf4 && second > 0x8f)
+        if (validSecond && (third & 0xc0) === 0x80 && (fourth & 0xc0) === 0x80) {
+          codePoint = ((first & 0x07) << 18) | ((second & 0x3f) << 12) |
+            ((third & 0x3f) << 6) | (fourth & 0x3f)
+          length = 4
+        }
       }
+      if (codePoint > 0xffff) {
+        const value = codePoint - 0x10000
+        result += String.fromCharCode(0xd800 + (value >> 10), 0xdc00 + (value & 0x3ff))
+      } else {
+        result += String.fromCharCode(codePoint)
+      }
+      i += length
     }
     return result
   }
-  // 将字符串编码为字节数组（UTF-8）
+  // 将 Unicode 字符串编码为 UTF-8 字节，正确处理代理对
   function stringToBytes(inputString) {
     const bytes = []
     for (let i = 0; i < inputString.length; i++) {
-      const charCode = inputString.charCodeAt(i)
-      if (charCode < 128) {
-        bytes.push(charCode)
-      } else if (charCode < 2048) {
-        bytes.push((charCode >> 6) | 192)
-        bytes.push((charCode & 63) | 128)
+      let codePoint = inputString.codePointAt(i)
+      if (codePoint > 0xffff) i++
+      if (codePoint < 0x80) {
+        bytes.push(codePoint)
+      } else if (codePoint < 0x800) {
+        bytes.push((codePoint >> 6) | 0xc0, (codePoint & 0x3f) | 0x80)
+      } else if (codePoint < 0x10000) {
+        bytes.push((codePoint >> 12) | 0xe0, ((codePoint >> 6) & 0x3f) | 0x80, (codePoint & 0x3f) | 0x80)
       } else {
-        bytes.push((charCode >> 12) | 224)
-        bytes.push(((charCode >> 6) & 63) | 128)
-        bytes.push((charCode & 63) | 128)
+        bytes.push((codePoint >> 18) | 0xf0, ((codePoint >> 12) & 0x3f) | 0x80,
+          ((codePoint >> 6) & 0x3f) | 0x80, (codePoint & 0x3f) | 0x80)
       }
     }
     return bytes

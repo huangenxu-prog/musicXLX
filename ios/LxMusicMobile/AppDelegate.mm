@@ -256,6 +256,18 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
   context[@"__lx_native_call__utils_str2md5"] = ^NSString *(NSString *value) {
     return LXMD5(value ?: @"");
   };
+  context[@"__lx_native_call__utils_random_bytes"] = ^NSString *(NSNumber *requestedSize) {
+    long long count = requestedSize.longLongValue;
+    if (count < 0 || count > 1048576 || requestedSize.doubleValue != (double)count) return @"[]";
+    if (count == 0) return @"[]";
+    NSMutableData *randomData = [NSMutableData dataWithLength:(NSUInteger)count];
+    if (SecRandomCopyBytes(kSecRandomDefault, (size_t)count, randomData.mutableBytes) != errSecSuccess) return @"[]";
+    NSMutableArray<NSNumber *> *bytes = [NSMutableArray arrayWithCapacity:(NSUInteger)count];
+    const uint8_t *buffer = (const uint8_t *)randomData.bytes;
+    for (NSUInteger i = 0; i < (NSUInteger)count; i++) [bytes addObject:@(buffer[i])];
+    NSData *json = [NSJSONSerialization dataWithJSONObject:bytes options:0 error:nil];
+    return json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : @"[]";
+  };
   context[@"__lx_native_call__utils_aes_encrypt"] = ^NSString *(NSString *data, NSString *key, NSString *iv, NSString *mode) {
     return LXAES(data ?: @"", key ?: @"", iv ?: @"", mode ?: @"");
   };

@@ -33,15 +33,23 @@ const handleRequestData = async({
     // React Native fetch requires an actual FormData instance, not a plain object.
     const formData = new global.FormData()
     for (const [key, value] of Object.entries(options.formData)) {
-      formData.append(key, value)
+      if (Array.isArray(value)) {
+        for (const entry of value) formData.append(key, entry)
+      } else {
+        formData.append(key, value)
+      }
     }
     options.body = formData
     delete options.formData
+    // The native fetch layer must generate the multipart boundary itself.
+    for (const name of Object.keys(headers)) {
+      if (name.toLowerCase() === 'content-type') delete headers[name]
+    }
   } else if (method.toLowerCase() === 'post' && !contentTypeEntry && options.body != null && typeof options.body !== 'string') {
     headers['Content-Type'] = 'application/json'
   }
-  const contentType = contentTypeEntry?.[1] ?? headers['Content-Type']
-  if (typeof contentType === 'string' && contentType.toLowerCase().includes('application/json') && options.body != null && typeof options.body !== 'string') {
+  const contentType = Object.entries(headers).find(([name]) => name.toLowerCase() === 'content-type')?.[1]
+  if (options.formData == null && typeof contentType === 'string' && contentType.toLowerCase().includes('application/json') && options.body != null && typeof options.body !== 'string' && !(options.body instanceof global.FormData)) {
     options.body = JSON.stringify(options.body)
   }
 

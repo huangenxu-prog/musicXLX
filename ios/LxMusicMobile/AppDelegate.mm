@@ -337,6 +337,10 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
   }
 
   [context evaluateScript:preload];
+  if (context.exception != nil) {
+    [self failInitialization:[NSString stringWithFormat:@"LX preload exception: %@", context.exception.toString ?: @"unknown"] runtimeKey:scriptRuntimeKey];
+    return;
+  }
   JSValue *setup = context[@"lx_setup"];
   if (setup == nil || setup.isUndefined) {
     [self failInitialization:@"LX preload did not define lx_setup" runtimeKey:scriptRuntimeKey];
@@ -355,7 +359,14 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
     script
   ];
   [setup callWithArguments:setupArguments];
+  if (context.exception != nil) {
+    [self failInitialization:[NSString stringWithFormat:@"LX setup exception: %@", context.exception.toString ?: @"unknown"] runtimeKey:scriptRuntimeKey];
+    return;
+  }
   [context evaluateScript:script];
+  if (context.exception != nil) {
+    [self failInitialization:[NSString stringWithFormat:@"Music source script exception: %@", context.exception.toString ?: @"unknown"] runtimeKey:scriptRuntimeKey];
+  }
 }
 
 RCT_EXPORT_METHOD(sendAction:(NSString *)action info:(NSString *)info)

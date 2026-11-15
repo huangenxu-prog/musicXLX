@@ -1,1 +1,1 @@
-Request latest MusicXLX unsigned iOS IPA build after JS source fixes, 2026-11-15.
+Build request: 2026-11-15 single unsigned IPA, workflow revision da03f20.

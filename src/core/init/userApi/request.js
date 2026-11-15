@@ -106,10 +106,10 @@ export const fetchData = (url, { timeout = 13_000, ...options }) => {
       }).catch(err => {
         // console.log(err, err.code, err.message)
         return Promise.reject(err)
-      }).finally(() => {
-        if (id == null) return
-        BackgroundTimer.clearTimeout(id)
       })
+    }).finally(() => {
+      if (id == null) return
+      BackgroundTimer.clearTimeout(id)
     }),
     abort() {
       controller.abort()

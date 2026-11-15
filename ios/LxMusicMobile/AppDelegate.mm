@@ -310,6 +310,17 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
     });
     dispatch_resume(timer);
   };
+  context[@"__lx_native_call__clear_timeout"] = ^(NSNumber *identifier) {
+    LXUserApiModule *strongSelf = weakSelf;
+    if (strongSelf == nil) return;
+    NSNumber *timerId = identifier ?: @0;
+    dispatch_async(strongSelf.methodQueue, ^{
+      dispatch_source_t timer = strongSelf.timeoutSources[timerId];
+      [strongSelf.timeoutTokens removeObjectForKey:timerId];
+      [strongSelf.timeoutSources removeObjectForKey:timerId];
+      if (timer != nil) dispatch_source_cancel(timer);
+    });
+  };
 
   JSValue *console = [JSValue valueWithNewObjectInContext:context];
   console[@"log"] = ^(JSValue *value) { [weakSelf emitLog:@"log" message:value.toString runtimeKey:scriptRuntimeKey]; };

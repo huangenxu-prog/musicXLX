@@ -253,7 +253,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     // console.log(data)
     if (!events.request) return nativeCall(NATIVE_EVENTS_NAMES.response, { requestKey, status: false, errorMessage: 'Request event is not defined' })
     try {
-      events.request.call(globalThis.lx, { source: data.source, action: data.action, info: data.info }).then(response => {
+      Promise.resolve(events.request.call(globalThis.lx, { source: data.source, action: data.action, info: data.info })).then(response => {
         let result
         switch (data.action) {
           case 'musicUrl':
@@ -479,7 +479,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
 
   globalThis.lx = {
     EVENT_NAMES,
-    request(url, { method = 'get', timeout, headers, body, form, formData, binary }, callback) {
+    request(url, { method = 'get', timeout, headers, body, form, formData, binary } = {}, callback) {
       let options = { headers, binary: binary === true }
       // let data
       // if (body) {

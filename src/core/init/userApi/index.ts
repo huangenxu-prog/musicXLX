@@ -48,6 +48,9 @@ export default async(setting: LX.AppSetting) => {
       target.reject(new Error('request failed'))
     }
     const requestPromise = new Promise<ResponseParams['result']>((resolve, reject) => {
+      if (data.data.action === 'musicUrl') {
+        log.info('[user-api] musicUrl request dispatched: ' + data.data.source)
+      }
       userApiRequestMap.set(data.requestKey, {
         resolve,
         reject,
@@ -70,8 +73,17 @@ export default async(setting: LX.AppSetting) => {
     if (!target) return
     userApiRequestMap.delete(requestKey)
     BackgroundTimer.clearTimeout(target.timeout)
-    if (status) target.resolve(result)
-    else {
+    if (status) {
+      if (result?.action === 'musicUrl') {
+        if (typeof result?.data?.url !== 'string' || !/^https?:\/\//i.test(result.data.url)) {
+          log.r_error('[user-api] musicUrl response missing valid HTTP URL')
+          target.reject(new Error('musicUrl response missing valid HTTP URL'))
+          return
+        }
+        log.info('[user-api] musicUrl resolved: ' + result.source)
+      }
+      target.resolve(result)
+    } else {
       log.r_error('[user-api] source action failed:', errorMessage ?? 'failed')
       target.reject(new Error(errorMessage ?? 'failed'))
     }

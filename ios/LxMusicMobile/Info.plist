@@ -26,9 +26,10 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
+	  <!-- Custom user-provided LX source scripts can request arbitrary HTTP hosts. -->
+  <!-- This sideload build allows HTTP; review ATS policy before App Store distribution. -->
 		<key>NSAllowsArbitraryLoads</key>
-		<false/>
+		<true/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>

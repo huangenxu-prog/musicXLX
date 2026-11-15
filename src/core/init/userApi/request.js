@@ -112,7 +112,9 @@ export const fetchData = (url, { timeout = 13_000, ...options } = {}) => {
       })).then(resp => {
         if (options.binary) {
           return blobToBuffer(resp.body).then(buffer => {
-            resp.body = buffer
+            // JSON bridge cannot preserve Node Buffer prototypes. Transfer bytes as
+            // a plain array and reconstruct Uint8Array in the JS source runtime.
+            resp.body = Array.from(buffer)
             return resp
           })
         } else {

@@ -131,6 +131,12 @@ jobs:
               count=$((count + 1))
             done < <(find "$FONT_DIR" -maxdepth 1 -type f -name '*.ttf' -print0)
             test "$count" -gt 0
+            CUSTOM_FONT="src/resources/fonts/icomoon.ttf"
+            test -f "$CUSTOM_FONT"
+            ditto "$CUSTOM_FONT" "$APP/icomoon.ttf"
+            /usr/libexec/PlistBuddy -c "Add :UIAppFonts:${count} string icomoon.ttf" "$APP/Info.plist"
+            /usr/libexec/PlistBuddy -c "Print :UIAppFonts" "$APP/Info.plist"
+
             echo "Registered $count vector icon fonts for $PLATFORM"
           done
 
@@ -171,6 +177,12 @@ jobs:
               count=$((count + 1))
             done < <(find "$FONT_DIR" -maxdepth 1 -type f -name '*.ttf' -print0)
             test "$count" -gt 0
+            CUSTOM_FONT="src/resources/fonts/icomoon.ttf"
+            test -f "$CUSTOM_FONT"
+            ditto "$CUSTOM_FONT" "$APP/icomoon.ttf"
+            /usr/libexec/PlistBuddy -c "Add :UIAppFonts:${count} string icomoon.ttf" "$APP/Info.plist"
+            /usr/libexec/PlistBuddy -c "Print :UIAppFonts" "$APP/Info.plist"
+
             echo "Registered $count vector icon fonts for $PLATFORM"
           done
 

@@ -226,7 +226,7 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
   [self destroyContext];
   self.runtimeKey = NSUUID.UUID.UUIDString;
   NSString *scriptRuntimeKey = [self.runtimeKey copy];
-  dispatch_async(dispatch_get_main_queue(), ^{ self.didSendInit = NO; });
+  self.didSendInit = NO;
   JSContext *context = [[JSContext alloc] init];
   self.jsContext = context;
   __weak LXUserApiModule *weakSelf = self;

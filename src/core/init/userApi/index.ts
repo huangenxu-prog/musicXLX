@@ -75,7 +75,7 @@ export default async(setting: LX.AppSetting) => {
     BackgroundTimer.clearTimeout(target.timeout)
     if (status) {
       if (result?.action === 'musicUrl') {
-        if (typeof result?.data?.url !== 'string' || !/^https?:\/\//i.test(result.data.url)) {
+        if (typeof result?.data?.url !== 'string' || !/^https?:\/\//i.test(result.data.url as string)) {
           log.r_error('[user-api] musicUrl response missing valid HTTP URL')
           target.reject(new Error('musicUrl response missing valid HTTP URL'))
           return
@@ -203,7 +203,7 @@ export default async(setting: LX.AppSetting) => {
         }
         global.lx.qualityList = qualitys
         global.lx.apis = apis
-        log.info('[user-api] registered music sources: ' + Object.keys(apis).join(', '))
+        log.info('[user-api] registered music sources: ' + Object.keys(apis as Record<string, unknown>).join(', '))
         global.state_event.apiSourceUpdated(settingState.setting['common.apiSource'])
       }
     } else {

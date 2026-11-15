@@ -1,1 +1,1 @@
-Validate JS music-source bridge fixes through 8efbe4c; one unsigned IPA only.
+Verify 3bbc99d ESLint fix and latest source bridge; produce only one unsigned IPA.

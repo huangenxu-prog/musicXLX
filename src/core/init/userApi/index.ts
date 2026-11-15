@@ -80,8 +80,17 @@ export default async(setting: LX.AppSetting) => {
     // console.log(status, message, info)
     if (!status) log.r_error('[user-api] initialization failed:', errorMessage ?? 'unknown error')
     setUserApiStatus(status, errorMessage)
-    if (!info || info.id !== settingState.setting['common.apiSource']) return
+    if (!info) {
+      log.r_error('[user-api] init event missing source metadata')
+      return
+    }
+    if (info.id !== settingState.setting['common.apiSource']) {
+      // Source metadata is deliberately omitted to avoid exposing user scripts.
+      log.r_error('[user-api] init ignored: source selection changed before registration')
+      return
+    }
     if (status) {
+      log.info('[user-api] init accepted; registering supported actions')
       if (info.sources) {
         let apis: any = {}
         let qualitys: LX.QualityList = {}
@@ -182,6 +191,7 @@ export default async(setting: LX.AppSetting) => {
         }
         global.lx.qualityList = qualitys
         global.lx.apis = apis
+        log.info('[user-api] registered music sources: ' + Object.keys(apis).join(', '))
         global.state_event.apiSourceUpdated(settingState.setting['common.apiSource'])
       }
     } else {

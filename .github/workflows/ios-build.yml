@@ -129,7 +129,7 @@ jobs:
               /usr/libexec/PlistBuddy -c "Add :UIAppFonts array" "$APP/Info.plist" 2>/dev/null || true
               /usr/libexec/PlistBuddy -c "Add :UIAppFonts:${count} string $NAME" "$APP/Info.plist"
               count=$((count + 1))
-            done < <(find "$FONT_DIR" -maxdepth 1 -type f -name '*.ttf' -print0 | sort -z)
+            done < <(find "$FONT_DIR" -maxdepth 1 -type f -name '*.ttf' -print0)
             test "$count" -gt 0
             echo "Registered $count vector icon fonts for $PLATFORM"
           done
@@ -169,7 +169,7 @@ jobs:
               /usr/libexec/PlistBuddy -c "Add :UIAppFonts array" "$APP/Info.plist" 2>/dev/null || true
               /usr/libexec/PlistBuddy -c "Add :UIAppFonts:${count} string $NAME" "$APP/Info.plist"
               count=$((count + 1))
-            done < <(find "$FONT_DIR" -maxdepth 1 -type f -name '*.ttf' -print0 | sort -z)
+            done < <(find "$FONT_DIR" -maxdepth 1 -type f -name '*.ttf' -print0)
             test "$count" -gt 0
             echo "Registered $count vector icon fonts for $PLATFORM"
           done

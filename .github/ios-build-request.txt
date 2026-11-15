@@ -1,1 +1,1 @@
-Build request: 2026-11-15 single unsigned IPA, workflow revision da03f20.
+Build request 2026-11-15: retry after ESLint fixes commit 22acd5f; one unsigned IPA.

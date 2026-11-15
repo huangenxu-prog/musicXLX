@@ -297,7 +297,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
         nativeCall(NATIVE_EVENTS_NAMES.response, { requestKey, status: true, result })
       }).catch(err => {
         // console.log('handleRequest err', err)
-        nativeCall(NATIVE_EVENTS_NAMES.response, { requestKey, status: false, errorMessage: err.message })
+        nativeCall(NATIVE_EVENTS_NAMES.response, { requestKey, status: false, errorMessage: `[${data.source}/${data.action}] ${err && err.stack ? err.stack : String(err)}` })
       })
     } catch (err) {
       // console.log('handleRequest call err', err)

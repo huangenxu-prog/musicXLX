@@ -10,6 +10,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
   }
   const nativeFuncNames = [
     '__lx_native_call__set_timeout',
+    '__lx_native_call__clear_timeout',
     '__lx_native_call__utils_str2b64',
     '__lx_native_call__utils_b642buf',
     '__lx_native_call__utils_buf2b64',
@@ -78,9 +79,9 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     return id
   }
   const _clearTimeout = (id) => {
-    const tagret = callbacks.get(id)
-    if (!tagret) return
+    if (!callbacks.has(id)) return
     callbacks.delete(id)
+    nativeFuncs.clear_timeout(id)
   }
   const handleSetTimeout = (id) => {
     const tagret = callbacks.get(id)

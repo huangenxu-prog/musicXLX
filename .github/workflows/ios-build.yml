@@ -106,3 +106,11 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Upload iOS Simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: musicXLX-ios-simulator-${{ github.run_number }}
+          path: ${{ runner.temp }}/DerivedData/Build/Products/Release-iphonesimulator/LxMusicMobile.app
+          if-no-files-found: error
+          retention-days: 7

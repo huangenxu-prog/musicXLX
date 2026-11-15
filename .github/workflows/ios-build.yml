@@ -13,6 +13,7 @@ on:
       - "babel.config.js"
       - "tsconfig.json"
       - ".github/workflows/ios-build.yml"
+  workflow_dispatch:
   pull_request:
     branches:
       - integration/musicx-experience-cache
@@ -141,3 +142,22 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+
+      - name: Package unsigned iOS IPA
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/LxMusicMobile.app"
+          test -d "$APP"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          ditto "$APP" "$RUNNER_TEMP/ipa/Payload/LxMusicMobile.app"
+          cd "$RUNNER_TEMP/ipa"
+          /usr/bin/zip -qry "$RUNNER_TEMP/MusicXLX-unsigned.ipa" Payload
+          unzip -t "$RUNNER_TEMP/MusicXLX-unsigned.ipa" | tail -n 1
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: musicXLX-unsigned-ipa-${{ github.run_number }}
+          path: ${{ runner.temp }}/MusicXLX-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

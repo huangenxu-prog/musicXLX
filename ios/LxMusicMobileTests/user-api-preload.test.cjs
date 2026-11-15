@@ -7,10 +7,12 @@ const vm = require('node:vm')
 
 const preloadPath = path.join(__dirname, '..', 'LxMusicMobile', 'user-api-preload.js')
 const source = fs.readFileSync(preloadPath, 'utf8')
+const clearedTimers = []
 const sandbox = {
   console,
   __lx_native_call__: () => {},
   __lx_native_call__set_timeout: () => {},
+  __lx_native_call__clear_timeout: id => clearedTimers.push(id),
   __lx_native_call__utils_str2b64: value => Buffer.from(value, 'utf8').toString('base64'),
   __lx_native_call__utils_b642buf: value => JSON.stringify(Array.from(Buffer.from(value, 'base64'))),
   __lx_native_call__utils_buf2b64: values => Buffer.from(values).toString('base64'),
@@ -38,5 +40,12 @@ assert.deepEqual(Array.from(buffer.from(encoded, 'base64')), Array.from(binary))
 assert.equal(sandbox.lx.utils.crypto.randomBytes(8).length, 8)
 assert.throws(() => sandbox.lx.utils.crypto.randomBytes(-1), error => error && error.name === 'RangeError')
 assert.throws(() => sandbox.lx.utils.crypto.randomBytes(1048577), error => error && error.name === 'RangeError')
+
+let cancelledTimerFired = false
+const timerId = sandbox.setTimeout(() => { cancelledTimerFired = true }, 100)
+sandbox.clearTimeout(timerId)
+assert.deepEqual(clearedTimers, [timerId])
+sandbox.__lx_native__('test-runtime-key', '__set_timeout__', String(timerId))
+assert.equal(cancelledTimerFired, false)
 
 console.log('user-api-preload runtime tests passed')

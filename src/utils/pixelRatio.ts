@@ -5,7 +5,7 @@
  * width:375
  * height:667
  */
-import { PixelRatio } from 'react-native'
+import { Dimensions, PixelRatio } from 'react-native'
 import { windowSizeTools } from './windowSizeTools'
 
 // 高保真的宽度和高度
@@ -13,7 +13,12 @@ const designWidth = 375.0
 const designHeight = 667.0
 
 // 获取屏幕的dp
-const size = windowSizeTools.getSize()
+const initializedSize = windowSizeTools.getSize()
+// This module can be imported before windowSizeTools.init() completes on iOS.
+// Never cache a zero-sized viewport: it collapses all scaled text and controls.
+const size = initializedSize.width > 0 && initializedSize.height > 0
+  ? initializedSize
+  : Dimensions.get('window')
 // console.log('size', size)
 let screenW = size.width
 let screenH = size.height

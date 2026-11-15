@@ -56,6 +56,22 @@ async function main() {
     response: { statusCode: 200, statusMessage: 'OK', headers: {}, body: { ok: true } },
   }))
   assert.equal(callbackBody.ok, true)
+  // Two-argument form is used by some community source scripts.
+  let shortCallbackBody
+  sandbox.lx.request('https://example.com/short', (error, response, body) => {
+    assert.equal(error, null)
+    assert.equal(response.statusCode, 200)
+    shortCallbackBody = body
+  })
+  const shortRequest = events.filter(e => e.action === 'request').at(-1)
+  assert.equal(shortRequest.data.url, 'https://example.com/short')
+  sandbox.__lx_native__('test-key', 'response', JSON.stringify({
+    requestKey: shortRequest.data.requestKey,
+    error: null,
+    response: { statusCode: 200, statusMessage: 'OK', headers: {}, body: 'ok' },
+  }))
+  assert.equal(shortCallbackBody, 'ok')
+  assert.throws(() => sandbox.lx.request('https://example.com/no-callback'), /requires a callback/)
   console.log('iOS JS bridge contract tests passed')
 }
 main().catch(error => { console.error(error); process.exitCode = 1 })

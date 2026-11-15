@@ -184,25 +184,13 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
   const events = {
     request: null,
   }
-  const allSources = ['kw', 'kg', 'tx', 'wy', 'mg', 'xm', 'local']
-  const supportQualitys = {
-    kw: ['128k', '320k', 'flac', 'flac24bit'],
-    kg: ['128k', '320k', 'flac', 'flac24bit'],
-    tx: ['128k', '320k', 'flac', 'flac24bit'],
-    wy: ['128k', '320k', 'flac', 'flac24bit'],
-    mg: ['128k', '320k', 'flac', 'flac24bit'],
-    xm: ['128k', '320k', 'flac', 'flac24bit'],
-    local: [],
-  }
-  const supportActions = {
-    kw: ['musicUrl'],
-    kg: ['musicUrl'],
-    tx: ['musicUrl'],
-    wy: ['musicUrl'],
-    mg: ['musicUrl'],
-    xm: ['musicUrl'],
-    local: ['musicUrl', 'lyric', 'pic'],
-  }
+  // Preserve source-declared capabilities. Filtering against the historical
+  // 128k/320k/flac-only list silently discarded Hi-Res, master and lyric/pic.
+  // The source's own request handler remains responsible for resolving them.
+  const allSources = ['kw', 'kg', 'tx', 'wy', 'mg', 'xm', 'qs', 'local']
+  const supportedQualityNames = ['128k', '192k', '320k', 'flac', 'flac24bit', 'hires', 'atmos', 'atmos_plus', 'master', 'spatial']
+  const supportQualitys = Object.fromEntries(allSources.map(source => [source, source === 'local' ? [] : supportedQualityNames]))
+  const supportActions = Object.fromEntries(allSources.map(source => [source, ['musicUrl', 'lyric', 'pic']]))
 
   const verifyLyricInfo = (info) => {
     if (typeof info != 'object' || typeof info.lyric != 'string') throw new Error('failed')

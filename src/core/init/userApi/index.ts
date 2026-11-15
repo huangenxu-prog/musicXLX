@@ -20,13 +20,14 @@ export default async(setting: LX.AppSetting) => {
   const sendScriptRequest = (requestKey: string, url: string, options: RequestParams['options']) => {
     let req = fetchData(url, options)
     req.request.then(response => {
-      // console.log(response)
+      // Avoid logging request URLs, headers, tokens, or response bodies.
       sendAction('response', {
         error: null,
         requestKey,
         response,
       })
     }).catch(err => {
+      log.r_error('[user-api] network request failed:', err instanceof Error ? err.message : String(err))
       sendAction('response', {
         error: err.message,
         requestKey,
@@ -69,10 +70,14 @@ export default async(setting: LX.AppSetting) => {
     userApiRequestMap.delete(requestKey)
     BackgroundTimer.clearTimeout(target.timeout)
     if (status) target.resolve(result)
-    else target.reject(new Error(errorMessage ?? 'failed'))
+    else {
+      log.r_error('[user-api] source action failed:', errorMessage ?? 'failed')
+      target.reject(new Error(errorMessage ?? 'failed'))
+    }
   }
   const handleStateChange = ({ status, errorMessage, info }: InitParams) => {
     // console.log(status, message, info)
+    if (!status) log.r_error('[user-api] initialization failed:', errorMessage ?? 'unknown error')
     setUserApiStatus(status, errorMessage)
     if (!info || info.id !== settingState.setting['common.apiSource']) return
     if (status) {

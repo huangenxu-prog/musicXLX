@@ -184,13 +184,14 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
   const events = {
     request: null,
   }
-  const allSources = ['kw', 'kg', 'tx', 'wy', 'mg', 'local']
+  const allSources = ['kw', 'kg', 'tx', 'wy', 'mg', 'xm', 'local']
   const supportQualitys = {
     kw: ['128k', '320k', 'flac', 'flac24bit'],
     kg: ['128k', '320k', 'flac', 'flac24bit'],
     tx: ['128k', '320k', 'flac', 'flac24bit'],
     wy: ['128k', '320k', 'flac', 'flac24bit'],
     mg: ['128k', '320k', 'flac', 'flac24bit'],
+    xm: ['128k', '320k', 'flac', 'flac24bit'],
     local: [],
   }
   const supportActions = {

@@ -90,6 +90,20 @@ async function main() {
   }))
   assert.equal(Object.prototype.toString.call(binaryBody), '[object Uint8Array]')
   assert.deepEqual(Array.from(binaryBody), [0, 255, 128, 65])
+  // A JSON array is not a binary response and must remain an Array.
+  let jsonArrayBody
+  sandbox.lx.request('https://example.com/list', {}, (error, response, body) => {
+    assert.equal(error, null)
+    jsonArrayBody = body
+  })
+  const listRequest = events.filter(e => e.action === 'request').at(-1)
+  sandbox.__lx_native__('test-key', 'response', JSON.stringify({
+    requestKey: listRequest.data.requestKey,
+    error: null,
+    response: { statusCode: 200, headers: {}, body: [1, 2, 3] },
+  }))
+  assert.equal(Array.isArray(jsonArrayBody), true)
+  assert.deepEqual(Array.from(jsonArrayBody), [1, 2, 3])
   assert.throws(() => sandbox.lx.request('https://example.com/no-callback'), /requires a callback/)
   // Cancellation must be safe when the source invokes its abort handle twice.
   let cancelledCallbackCount = 0

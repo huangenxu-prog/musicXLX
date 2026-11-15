@@ -234,6 +234,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     }
     requestQueue.set(requestKey, {
       callback,
+      binary: options.binary === true,
       // timeout: setTimeout(() => {
       //   const req = requestQueue.get(requestKey)
       //   if (req) req.timeout = null
@@ -252,7 +253,9 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     targetRequest.requestInfo.aborted = true
     // if (targetRequest.timeout) clearTimeout(targetRequest.timeout)
     if (error == null) {
-      if (response && Array.isArray(response.body)) response.body = new Uint8Array(response.body)
+      // Only binary requests carry a byte-array payload. JSON APIs may
+      // legitimately return arrays; those must remain ordinary arrays.
+      if (targetRequest.binary && response && Array.isArray(response.body)) response.body = new Uint8Array(response.body)
       targetRequest.callback(null, response)
     } else targetRequest.callback(new Error(error), null)
   }

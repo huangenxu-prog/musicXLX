@@ -371,7 +371,9 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
       },
       randomBytes(size) {
         if (!Number.isSafeInteger(size) || size < 0 || size > 1048576) throw new RangeError('randomBytes size must be an integer between 0 and 1048576')
-        return new Uint8Array(JSON.parse(nativeFuncs.utils_random_bytes(size)))
+        const bytes = JSON.parse(nativeFuncs.utils_random_bytes(size))
+        if (!Array.isArray(bytes) || bytes.length !== size) throw new Error('Secure random generator failed')
+        return new Uint8Array(bytes)
       },
       md5(str) {
         if (typeof str !== 'string') throw new Error('param required a string')

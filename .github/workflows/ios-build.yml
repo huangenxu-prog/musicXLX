@@ -27,8 +27,8 @@ on:
       - ".github/workflows/ios-build.yml"
 
 concurrency:
-  group: ios-build-${{ github.ref }}
-  cancel-in-progress: true
+  group: ios-build-${{ github.run_id }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -41,7 +41,7 @@ jobs:
       - name: Checkout target branch
         uses: actions/checkout@v4
         with:
-          ref: integration/musicx-experience-cache
+          ref: ${{ github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -87,7 +87,7 @@ jobs:
       - name: Checkout target branch
         uses: actions/checkout@v4
         with:
-          ref: integration/musicx-experience-cache
+          ref: ${{ github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

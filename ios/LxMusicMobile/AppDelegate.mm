@@ -71,7 +71,7 @@ static BOOL LXReadASN1Length(const uint8_t *bytes, NSUInteger total, NSUInteger 
 }
 
 static NSData *LXRSAPublicKeyFromX509(NSData *x509) {
-  const uint8_t *bytes = x509.bytes;
+  const uint8_t *bytes = (const uint8_t *)x509.bytes;
   NSUInteger total = x509.length, offset = 0, length = 0;
   if (total < 8 || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
   if (offset >= total || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
@@ -84,7 +84,7 @@ static NSData *LXRSAPublicKeyFromX509(NSData *x509) {
 }
 
 static NSUInteger LXRSABitLength(NSData *pkcs1) {
-  const uint8_t *bytes = pkcs1.bytes;
+  const uint8_t *bytes = (const uint8_t *)pkcs1.bytes;
   NSUInteger total = pkcs1.length, offset = 0, length = 0;
   if (total < 8 || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return 0;
   if (offset >= total || bytes[offset++] != 0x02 || !LXReadASN1Length(bytes, total, &offset, &length)) return 0;
@@ -228,7 +228,7 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
   dispatch_async(dispatch_get_main_queue(), ^{ self.didSendInit = NO; });
   JSContext *context = [[JSContext alloc] init];
   self.jsContext = context;
-  __weak typeof(self) weakSelf = self;
+  __weak LXUserApiModule *weakSelf = self;
 
   context.exceptionHandler = ^(JSContext *ctx, JSValue *exception) {
     if (![scriptRuntimeKey isEqualToString:weakSelf.runtimeKey]) return;
@@ -395,7 +395,7 @@ static NSData *LXRSAPrivatePKCS8FromPKCS1(NSData *raw) {
 }
 
 static NSData *LXRSAPrivateKeyFromPKCS8(NSData *pkcs8) {
-  const uint8_t *bytes = pkcs8.bytes;
+  const uint8_t *bytes = (const uint8_t *)pkcs8.bytes;
   NSUInteger total = pkcs8.length, offset = 0, length = 0;
   if (total < 16 || bytes[offset++] != 0x30 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;
   if (offset >= total || bytes[offset++] != 0x02 || !LXReadASN1Length(bytes, total, &offset, &length)) return nil;

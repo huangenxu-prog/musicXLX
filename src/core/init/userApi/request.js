@@ -20,7 +20,8 @@ const handleRequestData = async({
   headers = Object.assign({
     Accept: 'application/json',
   }, headers)
-  if (method.toLocaleLowerCase() === 'post' && !headers['Content-Type']) {
+  const contentTypeEntry = Object.entries(headers).find(([name]) => name.toLowerCase() === 'content-type')
+  if (method.toLocaleLowerCase() === 'post' && !contentTypeEntry) {
     if (options.form) {
       headers['Content-Type'] = 'application/x-www-form-urlencoded'
       const formBody = []
@@ -32,20 +33,15 @@ const handleRequestData = async({
       options.body = formBody.join('&')
       delete options.form
     } else if (options.formData) {
-      headers['Content-Type'] = 'multipart/form-data'
-      const formBody = []
-      for (let [key, value] of Object.entries(options.form)) {
-        let encodedKey = encodeURIComponent(key)
-        let encodedValue = encodeURIComponent(value)
-        formBody.push(`${encodedKey}=${encodedValue}`)
-      }
+      // Let fetch add the multipart boundary for FormData bodies.
       options.body = options.formData
       delete options.formData
     } else {
       headers['Content-Type'] = 'application/json'
     }
   }
-  if (headers['Content-Type'] === 'application/json' && options.body) {
+  const contentType = contentTypeEntry?.[1] ?? headers['Content-Type']
+  if (typeof contentType === 'string' && contentType.toLowerCase().includes('application/json') && options.body) {
     options.body = JSON.stringify(options.body)
   }
 

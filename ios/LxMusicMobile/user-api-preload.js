@@ -223,6 +223,11 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     const requestInfo = {
       aborted: false,
       abort: () => {
+        if (requestInfo.aborted) return
+        requestInfo.aborted = true
+        // Remove the pending callback immediately; native cancellation is
+        // asynchronous and must not retain a callback indefinitely.
+        requestQueue.delete(requestKey)
         nativeCall(NATIVE_EVENTS_NAMES.cancelRequest, requestKey)
       },
     }
@@ -518,7 +523,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
       })
 
       return () => {
-        if (!request.aborted) request.abort()
+        if (request && !request.aborted) request.abort()
         request = null
       }
     },

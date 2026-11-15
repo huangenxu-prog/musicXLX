@@ -92,7 +92,17 @@ export const fetchData = (url, { timeout = 13_000, ...options } = {}) => {
       }).then(resp => (options.binary ? resp.blob() : resp.text()).then(text => {
         // console.log(options, headers, text)
         return {
-          headers: resp.headers?.map ?? Object.fromEntries(resp.headers?.entries?.() ?? []),
+          // React Native versions expose headers as .map, .entries(), or
+          // .forEach(). Never forward a function as a response header value.
+          headers: (() => {
+            const h = resp.headers
+            if (!h) return {}
+            if (h.map && typeof h.map === 'object') return h.map
+            if (typeof h.entries === 'function') return Object.fromEntries(h.entries())
+            const result = {}
+            if (typeof h.forEach === 'function') h.forEach((value, key) => { result[key] = value })
+            return result
+          })(),
           body: text,
           statusCode: resp.status,
           statusMessage: resp.statusText,

@@ -379,12 +379,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     }
     const playableSources = Object.entries(sourceInfo.sources).filter(([, source]) => source.actions.includes('musicUrl') && source.qualitys.length > 0)
     if (playableSources.length === 0) {
-      nativeCall(NATIVE_EVENTS_NAMES.init, {
-        info: sourceInfo,
-        status: false,
-        errorMessage: 'Custom source declares no supported musicUrl action with a playable quality',
-      })
-      return
+      console.warn('Custom source initialized without any playable musicUrl actions')
     }
     nativeCall(NATIVE_EVENTS_NAMES.init, { info: sourceInfo, status: true })
   }

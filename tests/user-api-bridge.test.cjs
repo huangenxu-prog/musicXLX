@@ -26,10 +26,12 @@ sandbox.lx_setup('test-key', 'test-id', 'test', '', '1', '', '', '')
 assert.equal(typeof sandbox.lx.request, 'function')
 async function main() {
   await sandbox.lx.send(sandbox.lx.EVENT_NAMES.inited, {
-    sources: { wy: { type: 'music', actions: ['musicUrl'], qualitys: ['128k'] } },
+    sources: { wy: { type: 'music', actions: ['musicUrl'], qualitys: ['128k'] }, xm: { type: 'music', actions: ['musicUrl'], qualitys: ['128k'] } },
   })
   const init = events.find(e => e.action === 'init')
   assert.equal(init.data.status, true)
+  assert.deepEqual(Array.from(Object.keys(init.data.info.sources)).sort(), ['wy', 'xm'])
+  assert.deepEqual(Array.from(init.data.info.sources.xm.actions), ['musicUrl'])
   await sandbox.lx.on(sandbox.lx.EVENT_NAMES.request, ({ action }) => {
     assert.equal(action, 'musicUrl')
     return 'https://example.com/audio.mp3'

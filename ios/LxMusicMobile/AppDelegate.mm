@@ -249,7 +249,7 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
   context[@"__lx_native_call__utils_b642buf"] = ^NSString *(NSString *value) {
     NSData *data = LXBase64Data(value);
     NSMutableArray *bytes = [NSMutableArray arrayWithCapacity:data.length];
-    const uint8_t *buffer = data.bytes;
+    const uint8_t *buffer = (const uint8_t *)data.bytes;
     for (NSUInteger i = 0; i < data.length; i++) [bytes addObject:@(buffer[i])];
     NSData *json = [NSJSONSerialization dataWithJSONObject:bytes options:0 error:nil];
     return json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : @"[]";

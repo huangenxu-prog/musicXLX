@@ -36,7 +36,7 @@ assert.equal(encoded, 'AP+AQRA=')
 assert.deepEqual(Array.from(buffer.from(encoded, 'base64')), Array.from(binary))
 
 assert.equal(sandbox.lx.utils.crypto.randomBytes(8).length, 8)
-assert.throws(() => sandbox.lx.utils.crypto.randomBytes(-1), RangeError)
-assert.throws(() => sandbox.lx.utils.crypto.randomBytes(1048577), RangeError)
+assert.throws(() => sandbox.lx.utils.crypto.randomBytes(-1), error => error && error.name === 'RangeError')
+assert.throws(() => sandbox.lx.utils.crypto.randomBytes(1048577), error => error && error.name === 'RangeError')
 
 console.log('user-api-preload runtime tests passed')

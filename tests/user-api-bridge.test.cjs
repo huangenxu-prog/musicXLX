@@ -73,6 +73,23 @@ async function main() {
     response: { statusCode: 200, statusMessage: 'OK', headers: {}, body: 'ok' },
   }))
   assert.equal(shortCallbackBody, 'ok')
+  // Binary responses must survive JSON transport and arrive as Uint8Array,
+  // not an object with numeric keys or an untyped JSON array.
+  let binaryBody
+  sandbox.lx.request('https://example.com/binary', { binary: true }, (error, response, body) => {
+    assert.equal(error, null)
+    binaryBody = body
+    assert.equal(response.body, body)
+  })
+  const binaryRequest = events.filter(e => e.action === 'request').at(-1)
+  assert.equal(binaryRequest.data.options.binary, true)
+  sandbox.__lx_native__('test-key', 'response', JSON.stringify({
+    requestKey: binaryRequest.data.requestKey,
+    error: null,
+    response: { statusCode: 200, statusMessage: 'OK', headers: {}, body: [0, 255, 128, 65] },
+  }))
+  assert.equal(Object.prototype.toString.call(binaryBody), '[object Uint8Array]')
+  assert.deepEqual(Array.from(binaryBody), [0, 255, 128, 65])
   assert.throws(() => sandbox.lx.request('https://example.com/no-callback'), /requires a callback/)
   // Cancellation must be safe when the source invokes its abort handle twice.
   let cancelledCallbackCount = 0

@@ -479,7 +479,14 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
 
   globalThis.lx = {
     EVENT_NAMES,
-    request(url, { method = 'get', timeout, headers, body, form, formData, binary } = {}, callback) {
+    request(url, requestOptions = {}, callback) {
+      // Support both lx.request(url, callback) and lx.request(url, options, callback).
+      if (typeof requestOptions === 'function') {
+        callback = requestOptions
+        requestOptions = {}
+      }
+      if (typeof callback !== 'function') throw new TypeError('lx.request requires a callback')
+      const { method = 'get', timeout, headers, body, form, formData, binary } = requestOptions || {}
       let options = { headers, binary: binary === true }
       // let data
       // if (body) {

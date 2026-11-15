@@ -1,1 +1,1 @@
-Build request 2026-11-15: retry after ESLint fixes commit 22acd5f; one unsigned IPA.
+Validate JS music-source bridge fixes through 8efbe4c; one unsigned IPA only.

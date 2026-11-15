@@ -253,6 +253,18 @@ RCT_EXPORT_METHOD(loadScript:(NSDictionary *)info) {
     NSData *json = [NSJSONSerialization dataWithJSONObject:bytes options:0 error:nil];
     return json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : @"[]";
   };
+  context[@"__lx_native_call__utils_buf2b64"] = ^NSString *(NSArray *values) {
+    if (![values isKindOfClass:[NSArray class]] || values.count > 1048576) return @"";
+    NSMutableData *data = [NSMutableData dataWithCapacity:values.count];
+    for (id value in values) {
+      if (![value isKindOfClass:[NSNumber class]]) return @"";
+      double number = [value doubleValue];
+      if (!isfinite(number) || number < 0 || number > 255 || floor(number) != number) return @"";
+      uint8_t byte = (uint8_t)number;
+      [data appendBytes:&byte length:1];
+    }
+    return LXBase64String(data);
+  };
   context[@"__lx_native_call__utils_str2md5"] = ^NSString *(NSString *value) {
     return LXMD5(value ?: @"");
   };

@@ -120,3 +120,24 @@ jobs:
           path: ${{ runner.temp }}/DerivedData/Build/Products/Release-iphonesimulator/LxMusicMobile.app
           if-no-files-found: error
           retention-days: 7
+
+      - name: Build iOS device app
+        run: |
+          xcodebuild \
+            -workspace ios/LxMusicMobile.xcworkspace \
+            -scheme LxMusicMobile \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Upload iOS device app
+        uses: actions/upload-artifact@v4
+        with:
+          name: musicXLX-ios-device-${{ github.run_number }}
+          path: ${{ runner.temp }}/DerivedData/Build/Products/Release-iphoneos/LxMusicMobile.app
+          if-no-files-found: error
+          retention-days: 7
+

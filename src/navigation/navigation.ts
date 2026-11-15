@@ -66,7 +66,7 @@ export async function pushHomeScreen() {
                 drawBehind: false,
               },
               statusBar: {
-                drawBehind: true,
+                drawBehind: false,
                 visible: true,
                 style: getStatusBarStyle(theme.isDark),
                 backgroundColor: 'transparent',
@@ -131,7 +131,7 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
             drawBehind: false,
           },
           statusBar: {
-            drawBehind: true,
+            drawBehind: false,
             visible: true,
             style: getStatusBarStyle(theme.isDark),
             backgroundColor: 'transparent',
@@ -216,7 +216,7 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
             drawBehind: false,
           },
           statusBar: {
-            drawBehind: true,
+            drawBehind: false,
             visible: true,
             style: getStatusBarStyle(theme.isDark),
             backgroundColor: 'transparent',
@@ -349,7 +349,7 @@ export function pushCommentScreen(componentId: string) {
             drawBehind: false,
           },
           statusBar: {
-            drawBehind: true,
+            drawBehind: false,
             visible: true,
             style: getStatusBarStyle(theme.isDark),
             backgroundColor: 'transparent',
@@ -432,7 +432,7 @@ export function pushCommentScreen(componentId: string) {
 //             drawBehind: false,
 //           },
 //           statusBar: {
-//             drawBehind: true,
+//             drawBehind: false,
 //             visible: true,
 //             style: getStatusBarStyle(theme.isDark),
 //             backgroundColor: 'transparent',

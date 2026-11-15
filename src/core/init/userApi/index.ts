@@ -22,7 +22,7 @@ export default async(setting: LX.AppSetting) => {
   }
   const sendScriptRequest = (requestKey: string, url: string, options: RequestParams['options']) => {
     // Do not log the URL: source endpoints may contain tokens or signed queries.
-    log.info('[user-api] HTTP request started: method=' + (options?.method ?? 'get') + ', binary=' + String(options?.binary === true))
+    log.info('[user-api] HTTP request started: method=' + (options?.method ?? 'get') + ', binary=' + String(options?.binary))
     try {
       const req = fetchData(url, options)
       scriptRequestMap.set(requestKey, req)

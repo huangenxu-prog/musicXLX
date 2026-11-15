@@ -60,6 +60,9 @@ jobs:
       - name: Validate iOS source runtime syntax
         run: node --check ios/LxMusicMobile/user-api-preload.js
 
+      - name: Test source runtime UTF-8 and binary codecs
+        run: node ios/LxMusicMobileTests/user-api-preload.test.cjs
+
       - name: ESLint check
         run: npm run lint
 

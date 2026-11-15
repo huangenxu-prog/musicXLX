@@ -26,12 +26,16 @@ sandbox.lx_setup('test-key', 'test-id', 'test', '', '1', '', '', '')
 assert.equal(typeof sandbox.lx.request, 'function')
 async function main() {
   await sandbox.lx.send(sandbox.lx.EVENT_NAMES.inited, {
-    sources: { wy: { type: 'music', actions: ['musicUrl'], qualitys: ['128k'] }, xm: { type: 'music', actions: ['musicUrl'], qualitys: ['128k'] } },
+    sources: { wy: { type: 'music', actions: ['musicUrl', 'lyric', 'pic'], qualitys: ['128k', 'hires', 'master'] }, xm: { type: 'music', actions: ['musicUrl'], qualitys: ['128k'] }, qs: { type: 'music', actions: ['musicUrl', 'lyric', 'pic'], qualitys: ['128k', 'spatial', 'hires'] }, tx: { type: 'music', actions: ['musicUrl'], qualitys: ['192k', 'atmos_plus'] } },
   })
   const init = events.find(e => e.action === 'init')
   assert.equal(init.data.status, true)
-  assert.deepEqual(Array.from(Object.keys(init.data.info.sources)).sort(), ['wy', 'xm'])
+  assert.deepEqual(Array.from(Object.keys(init.data.info.sources)).sort(), ['qs', 'tx', 'wy', 'xm'])
   assert.deepEqual(Array.from(init.data.info.sources.xm.actions), ['musicUrl'])
+  assert.deepEqual(Array.from(init.data.info.sources.wy.actions), ['musicUrl', 'lyric', 'pic'])
+  assert.deepEqual(Array.from(init.data.info.sources.wy.qualitys), ['128k', 'hires', 'master'])
+  assert.deepEqual(Array.from(init.data.info.sources.qs.qualitys), ['128k', 'spatial', 'hires'])
+  assert.deepEqual(Array.from(init.data.info.sources.tx.qualitys), ['192k', 'atmos_plus'])
   await sandbox.lx.on(sandbox.lx.EVENT_NAMES.request, ({ action }) => {
     assert.equal(action, 'musicUrl')
     return 'https://example.com/audio.mp3'

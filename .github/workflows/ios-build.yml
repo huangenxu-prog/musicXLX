@@ -40,6 +40,9 @@ jobs:
       - name: Test source runtime UTF-8 and binary codecs
         run: node ios/LxMusicMobileTests/user-api-preload.test.cjs
 
+      - name: Test source initialization, URL resolution, and network callback bridge
+        run: node tests/user-api-bridge.test.cjs
+
       - name: ESLint check
         run: npm run lint
 

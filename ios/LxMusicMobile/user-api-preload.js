@@ -12,6 +12,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     '__lx_native_call__set_timeout',
     '__lx_native_call__utils_str2b64',
     '__lx_native_call__utils_b642buf',
+    '__lx_native_call__utils_buf2b64',
     '__lx_native_call__utils_str2md5',
     '__lx_native_call__utils_random_bytes',
     '__lx_native_call__utils_aes_encrypt',
@@ -142,7 +143,8 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
     const bytes = []
     for (let i = 0; i < inputString.length; i++) {
       let codePoint = inputString.codePointAt(i)
-      if (codePoint > 0xffff) i++
+      if (codePoint >= 0xd800 && codePoint <= 0xdfff) codePoint = 0xfffd
+      else if (codePoint > 0xffff) i++
       if (codePoint < 0x80) {
         bytes.push(codePoint)
       } else if (codePoint < 0x800) {
@@ -443,7 +445,7 @@ globalThis.lx_setup = (key, id, name, description, version, author, homepage, ra
             case 'hex':
               return new Uint8Array(buf).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '')
             case 'base64':
-              return nativeFuncs.utils_str2b64(bytesToString(Array.from(buf)))
+              return nativeFuncs.utils_buf2b64(Array.from(buf))
             case 'utf8':
             case 'utf-8':
             default:

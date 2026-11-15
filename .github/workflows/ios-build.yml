@@ -114,6 +114,26 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      - name: Bundle and register iOS icon fonts (simulator)
+        run: |
+          set -euo pipefail
+          for PLATFORM in iphonesimulator; do
+            APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-${PLATFORM}/LxMusicMobile.app"
+            test -d "$APP"
+            FONT_DIR="node_modules/react-native-vector-icons/Fonts"
+            test -d "$FONT_DIR"
+            count=0
+            while IFS= read -r -d '' FONT; do
+              NAME="$(basename "$FONT")"
+              ditto "$FONT" "$APP/$NAME"
+              /usr/libexec/PlistBuddy -c "Add :UIAppFonts array" "$APP/Info.plist" 2>/dev/null || true
+              /usr/libexec/PlistBuddy -c "Add :UIAppFonts:${count} string $NAME" "$APP/Info.plist"
+              count=$((count + 1))
+            done < <(find "$FONT_DIR" -maxdepth 1 -type f -name '*.ttf' -print0 | sort -z)
+            test "$count" -gt 0
+            echo "Registered $count vector icon fonts for $PLATFORM"
+          done
+
       - name: Upload iOS Simulator app
         uses: actions/upload-artifact@v4
         with:
@@ -133,6 +153,26 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Bundle and register iOS icon fonts (device)
+        run: |
+          set -euo pipefail
+          for PLATFORM in iphoneos; do
+            APP="$RUNNER_TEMP/DerivedData/Build/Products/Release-${PLATFORM}/LxMusicMobile.app"
+            test -d "$APP"
+            FONT_DIR="node_modules/react-native-vector-icons/Fonts"
+            test -d "$FONT_DIR"
+            count=0
+            while IFS= read -r -d '' FONT; do
+              NAME="$(basename "$FONT")"
+              ditto "$FONT" "$APP/$NAME"
+              /usr/libexec/PlistBuddy -c "Add :UIAppFonts array" "$APP/Info.plist" 2>/dev/null || true
+              /usr/libexec/PlistBuddy -c "Add :UIAppFonts:${count} string $NAME" "$APP/Info.plist"
+              count=$((count + 1))
+            done < <(find "$FONT_DIR" -maxdepth 1 -type f -name '*.ttf' -print0 | sort -z)
+            test "$count" -gt 0
+            echo "Registered $count vector icon fonts for $PLATFORM"
+          done
 
       - name: Upload iOS device app
         uses: actions/upload-artifact@v4
